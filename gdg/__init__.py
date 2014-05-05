@@ -1,6 +1,10 @@
+import os
 import cherrypy
 from mako.template import Template
 from mako.lookup import TemplateLookup
+
+# Content is relative to the base directory, not the module directory.
+current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 templates = TemplateLookup(directories=['html'])
 
