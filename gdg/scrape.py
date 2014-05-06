@@ -1,6 +1,7 @@
 import os
 import ConfigParser
 import PIL
+from PIL import Image
 from peewee import *
 import gdg
 from gdg.data import *
