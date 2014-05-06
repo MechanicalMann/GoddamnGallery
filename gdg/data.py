@@ -1,6 +1,7 @@
+import os
 from peewee import *
 
-database = SqliteDatabase(None)
+database = SqliteDatabase(None, threadlocals=True)
 
 class BaseModel(Model):
     class Meta:
@@ -24,10 +25,10 @@ class Tag(BaseModel):
         db_table = 'tags'
 
 class GoddamnDatabase(object):
-    def __init__(self, dbname):
-        if dbname == None:
-            dbname = 'gallery.db'
-        self.dbname = dbname
+    def __init__(self, path):
+        if path == None:
+            path = os.path.dirname(__file__)
+        self.dbname = os.path.join(path, 'gallery.db')
     def __enter__(self):
         database.init(self.dbname)
         database.connect()

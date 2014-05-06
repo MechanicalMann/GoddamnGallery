@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-from gdg.scrape import main
+from gdg.scrape import scrape_images
 
 if __name__ == '__main__':
-    main()
+    scrape_images()
