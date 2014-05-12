@@ -6,8 +6,53 @@
         <title>${title}</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        <!-- Bootstrap -->
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        
+        <style>
+            ul.image-list {
+                padding: 0;
+                margin: 0;
+                list-style-type: none;
+            }
+            li.image {
+                padding: 0;
+                margin: 14px;
+                float: left;
+                width: 200px;
+                height: 320px;
+                overflow: hidden;
+            }
+            li.image img {
+                width: 200px;
+                height: 200px;
+            }
+            .average-color {
+                width: 200px;
+                /*height: 10px;*/
+                margin: 5px 0;
+            }
+            .image-info, .image-url {
+                text-align: center;
+                margin: 0;
+            }
+            .image-info {
+                position: relative;
+                bottom: 0;
+            }
+            .image-info .dark { color: #222; }
+            .image-info .light { color: #eee; }
+            a {
+                text-decoration: none;
+            }
+        </style>
     </head>
     <body>
-        ${self.body()}
+        <div class="container">
+            ${self.body()}
+        </div>
     </body>
 </html>

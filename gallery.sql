@@ -6,7 +6,9 @@ CREATE TABLE images (
     thumb VARCHAR( 255 ),
     x     INTEGER,
     y     INTEGER,
-    color VARCHAR( 6 ) 
+    r     INTEGER,
+    g     INTEGER,
+    b     INTEGER
 );
 
 -- Table: tags

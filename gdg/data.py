@@ -8,11 +8,14 @@ class BaseModel(Model):
         database = database
 
 class Image(BaseModel):
-    color = CharField(null=True)
+    #color = CharField(null=True)
     path = CharField()
     thumb = CharField(null=True)
     x = IntegerField(null=True)
     y = IntegerField(null=True)
+    r = IntegerField(null=True)
+    g = IntegerField(null=True)
+    b = IntegerField(null=True)
 
     class Meta:
         db_table = 'images'
