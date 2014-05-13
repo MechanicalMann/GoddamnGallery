@@ -14,6 +14,10 @@
             infocolor = "dark"
         else:
             infocolor = "light"
+        
+        infosize = ""
+        if not i.size_x == None:
+            infosize = "{} &times; {}, ".format(i.size_x, i.size_y)
         %>
         <li class="image">
             <a href="${i.path}">
@@ -23,7 +27,7 @@
             <div class="average-color" style="background: ${i.average_color}">
                 <div class="image-info">
                     <small class="${infocolor}">
-                        ${i.size_x} &times; ${i.size_y}, ${i.filesize}
+                        ${infosize}${i.filesize}
                     </small>
                 </div>
             </div>
@@ -36,6 +40,19 @@
     % endfor
     </ul>
     <div style="clear: both;"></div>
+    % if total_pages > 1:
+    <p class="text-center">
+        % if page > 1:
+        <a href="/">&lt;</a>
+        % endif
+        
+        Page ${page} of ${total_pages}
+        
+        % if page < total_pages:
+        <a href="/page/${page + 1}">&gt;</a>
+        % endif
+    </p>
+    % endif
 % elif not message == None:
     <p class="lead text-center">
         ${message}

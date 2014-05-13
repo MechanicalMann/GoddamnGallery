@@ -52,17 +52,57 @@ def get_model(img):
     }
     
     return ImageModel(**model)
+    
+def get_viewmodel():
+    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1 }
 
-class Gallery(object):
+def get_images(dbpath, model=None, page=1):
+    if model == None:
+        model = get_viewmodel()
+    
+    with GoddamnDatabase(cherrypy.request.app.config['database']['path']):
+        q = Image.select()
+        
+        count = q.count()
+        model['total_images'] = count
+        
+        q = q.order_by(Image.path)
+        
+        # TODO make total images per page a config variable
+        model['total_pages'] = int((count - 1) / 20) + 1
+        model['page'] = page
+        q = q.paginate(page, 20)
+        
+        model['images'] = [get_model(i) for i in q]
+        
+    return model
+
+class GalleryController(object):
     @cherrypy.expose
     def index(self):
         tmp = templates.get_template("index.html")
+        model = get_viewmodel()
         
-        if not os.path.isfile(os.path.join(cherrypy.request.app.config['database']['path'], 'gallery.db')):
-            return tmp.render(**{ 'title': 'Goddamnit', 'message': 'Your database is not initialized.  Please run the scraper so you can see your images here.', 'images': None })
-        with GoddamnDatabase(cherrypy.request.app.config['database']['path']):
-            images = [get_model(i) for i in Image.select().order_by(Image.path)]
-            return tmp.render(**{ 'title': "Some Pictures", 'images': images })
+        dbpath = cherrypy.request.app.config['database']['path']
+        
+        if not os.path.isfile(os.path.join(dbpath, 'gallery.db')):
+            model['title'] = 'Goddamnit'
+            model['message'] = 'Your database is not initialized.  Please run the scraper so you can see your images here.'
+        else:
+            model['title'] = 'Some Images'
+            get_images(dbpath, model)
+        
+        return tmp.render(**model)
+    
+    @cherrypy.expose
+    def page(self, page=1):
+        tmp = templates.get_template("index.html")
+        dbpath = cherrypy.request.app.config['database']['path']
+        
+        model = get_images(dbpath, page=int(page))
+        model['title'] = 'Some Images'
+        
+        return tmp.render(**model)
 
 def main():
-    cherrypy.quickstart(Gallery(), config='gdg.conf')
+    cherrypy.quickstart(GalleryController(), config='gdg.conf')
