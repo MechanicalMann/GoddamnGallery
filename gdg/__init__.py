@@ -33,8 +33,12 @@ def get_model(img):
     
     filename = os.path.basename(p)
     size = filesize(os.path.getsize(p))
-    color = "#%02X%02X%02X" % (img.r, img.g, img.b)
-    grey = int((img.r * 0.299) + (img.g * 0.587) + (img.b * 0.114))
+    if not img.r == None:
+        color = "#%02X%02X%02X" % (img.r, img.g, img.b)
+        grey = int((img.r * 0.299) + (img.g * 0.587) + (img.b * 0.114))
+    else:
+        color = "#FFFFFF"
+        grey = 255
     
     model = {
         'path': get_relative_path(img.path),
@@ -52,9 +56,12 @@ def get_model(img):
 class Gallery(object):
     @cherrypy.expose
     def index(self):
+        tmp = templates.get_template("index.html")
+        
+        if not os.path.isfile(os.path.join(cherrypy.request.app.config['database']['path'], 'gallery.db')):
+            return tmp.render(**{ 'title': 'Goddamnit', 'message': 'Your database is not initialized.  Please run the scraper so you can see your images here.', 'images': None })
         with GoddamnDatabase(cherrypy.request.app.config['database']['path']):
             images = [get_model(i) for i in Image.select().order_by(Image.path)]
-            tmp = templates.get_template("index.html")
             return tmp.render(**{ 'title': "Some Pictures", 'images': images })
 
 def main():

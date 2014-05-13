@@ -1,37 +1,47 @@
 <%inherit file="base.html"/>
 <h1 class="text-center">${title}</h1>
 
-<ul class="image-list center-block">
-% for i in images:
-    <%
-    if i.thumb == None:
-        thumb = i.path
-    else:
-        thumb = i.thumb
-    
-    if i.grey > 168:
-        infocolor = "dark"
-    else:
-        infocolor = "light"
-    %>
-    <li class="image">
-        <a href="${i.path}">
-            <img src="${thumb}" class="img-thumbnail" />
-        </a>
+% if not images == None and len(images) > 0:
+    <ul class="image-list center-block">
+    % for i in images:
+        <%
+        if i.thumb == None:
+            thumb = i.path
+        else:
+            thumb = i.thumb
         
-        <div class="average-color" style="background: ${i.average_color}">
-            <div class="image-info">
-                <small class="${infocolor}">
-                    ${i.size_x} &times; ${i.size_y}, ${i.filesize}
-                </small>
+        if i.grey > 168:
+            infocolor = "dark"
+        else:
+            infocolor = "light"
+        %>
+        <li class="image">
+            <a href="${i.path}">
+                <img src="${thumb}" class="img-thumbnail" />
+            </a>
+            
+            <div class="average-color" style="background: ${i.average_color}">
+                <div class="image-info">
+                    <small class="${infocolor}">
+                        ${i.size_x} &times; ${i.size_y}, ${i.filesize}
+                    </small>
+                </div>
             </div>
-        </div>
-        
-        <p class="image-url">
-            <a href="${i.path}" class="lead">${i.file}</a>
-        </p>
-        
-    </li>
-% endfor
-</ul>
-<div style="clear: both;"></div>
+            
+            <p class="image-url">
+                <a href="${i.path}" class="lead">${i.file}</a>
+            </p>
+            
+        </li>
+    % endfor
+    </ul>
+    <div style="clear: both;"></div>
+% elif not message == None:
+    <p class="lead text-center">
+        ${message}
+    </p>
+% else:
+    <p class="lead text-center muted-text">
+        There's nothing to see here yet.
+    </p>
+% endif
