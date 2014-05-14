@@ -42,8 +42,10 @@
     <div style="clear: both;"></div>
     % if total_pages > 1:
     <p class="text-center">
-        % if page > 1:
+        % if page == 2:
         <a href="/">&lt;</a>
+        % elif page > 2:
+        <a href="/page/${page - 1}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
@@ -53,12 +55,12 @@
         % endif
     </p>
     % endif
-% elif not message == None:
+% elif not message == None and not message == "":
     <p class="lead text-center">
         ${message}
     </p>
 % else:
     <p class="lead text-center muted-text">
-        There's nothing to see here yet.
+        There's nothing to see here.
     </p>
 % endif

@@ -56,11 +56,11 @@ def get_model(img):
 def get_viewmodel():
     return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1 }
 
-def get_images(dbpath, model=None, page=1):
+def get_images(dbpath, model=None, page=1, page_size=20):
     if model == None:
         model = get_viewmodel()
     
-    with GoddamnDatabase(cherrypy.request.app.config['database']['path']):
+    with GoddamnDatabase(dbpath):
         q = Image.select()
         
         count = q.count()
@@ -68,10 +68,9 @@ def get_images(dbpath, model=None, page=1):
         
         q = q.order_by(Image.path)
         
-        # TODO make total images per page a config variable
-        model['total_pages'] = int((count - 1) / 20) + 1
+        model['total_pages'] = int((count - 1) / page_size) + 1
         model['page'] = page
-        q = q.paginate(page, 20)
+        q = q.paginate(page, page_size)
         
         model['images'] = [get_model(i) for i in q]
         
@@ -90,7 +89,8 @@ class GalleryController(object):
             model['message'] = 'Your database is not initialized.  Please run the scraper so you can see your images here.'
         else:
             model['title'] = 'Some Images'
-            get_images(dbpath, model)
+            pagesize = cherrypy.request.app.config['gallery']['images_per_page']
+            get_images(dbpath, model, 1, pagesize)
         
         return tmp.render(**model)
     
@@ -98,11 +98,14 @@ class GalleryController(object):
     def page(self, page=1):
         tmp = templates.get_template("index.html")
         dbpath = cherrypy.request.app.config['database']['path']
+        page_size = cherrypy.request.app.config['gallery']['images_per_page']
         
-        model = get_images(dbpath, page=int(page))
+        model = get_images(dbpath, page=int(page), page_size=page_size)
         model['title'] = 'Some Images'
         
         return tmp.render(**model)
 
 def main():
-    cherrypy.quickstart(GalleryController(), config='gdg.conf')
+    cherrypy.tree.mount(root=GalleryController(), config='gdg.conf')
+    cherrypy.engine.start()
+    cherrypy.engine.block()
