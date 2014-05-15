@@ -88,6 +88,17 @@ def scrape_images():
             make_thumbnail(i)
             derive_average_color(i)
 
+def normalize_image(image):
+# ensures passed in PIL.Image is RGB
+    # If the image isn't RGB, convert it to RGB.
+    if (image.mode != "RGB"):
+        try:
+            image = image.convert("RGB")
+        except Exception as ex:
+            print("RGB conversion error for image " + i.path + ": " + str(ex))
+    return image
+
+
 def extract_image_metadata(i):
 # function determines image dimensions
     try:
@@ -107,13 +118,7 @@ def make_thumbnail(i):
     try:
         print("Thumbnailing image " + i.path)
         img = PIL.Image.open(i.path)
-       
-        # If the image isn't RGB, convert it to RGB.
-        if (img.mode != "RGB"):
-            try:
-                img = img.convert("RGB")
-            except Exception as ex:
-                print("RGB conversion error for image " + i.path + ": " + str(ex))
+        img = normalize_image(img)
 
         x = 0
         w = min(img.size)
@@ -159,13 +164,7 @@ def derive_average_color(i):
     try:
         print("Getting average color of image " + i.path)
         img = PIL.Image.open(i.path)
-
-        # If the image isn't RGB, convert it to RGB.
-        if (img.mode != "RGB"):
-            try:
-                img = img.convert("RGB")
-            except Exception as ex:
-                print("RGB conversion error for image " + i.path + ": " + str(ex))
+        img = normalize_image(img)
         
         hist = img.histogram()
         r = hist[0:256]
