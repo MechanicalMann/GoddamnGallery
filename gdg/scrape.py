@@ -1,4 +1,5 @@
 import os
+import mimetypes
 import ConfigParser
 import PIL
 from PIL import Image
@@ -8,11 +9,15 @@ from gdg.data import *
 
 config = ConfigParser.ConfigParser()
 
-def get_files(path):
+def is_image(file):
+    return (mimetypes.guess_type(file)[0] and mimetypes.guess_type(file)[0].startswith('image'))
+
+def get_image_files(path, follow_links=True):
     images = []
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(path, followlinks=follow_links):
         for filename in files:
-            images.append(os.path.join(root, filename))
+            if (is_image(filename)):
+                images.append(os.path.join(root, filename))
     return images
 
 def get_thumb(path, base, ext):
@@ -49,7 +54,9 @@ def scrape_images():
 
     with GoddamnDatabase(dbpath) as db:
         current = [i.path for i in Image.select()]
-        ondisk = get_files(get_directory(config.get('images', 'path')))
+        imgpath = get_directory(config.get('images', 'path'))
+        print("Searching {} for new images...".format(imgpath))
+        ondisk = get_image_files(imgpath, config.get('images', 'follow_links'))
         new_files = set(ondisk) - set(current)
         deleted_files = set(current) - set(ondisk)
         
@@ -73,8 +80,8 @@ def scrape_images():
                     img.delete_instance()
                     print("Removed record of deleted image " + f)
 
-# 2nd pass - derives metadata, etc 
-# currently: if there's a thumbnail, assume all processing is complete.
+    # 2nd pass - derives metadata, etc 
+    # currently: if there's a thumbnail, assume all processing is complete.
     with GoddamnDatabase(dbpath) as db:
         for i in Image.select().where(Image.thumb == None):
             extract_image_metadata(i)
