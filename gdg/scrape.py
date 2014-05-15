@@ -72,54 +72,95 @@ def scrape_images():
                         print("Unable to delete thumbnail for deleted image: {}.  You will need to remove this manually.".format(img.thumb))
                     img.delete_instance()
                     print("Removed record of deleted image " + f)
-    
+
+# 2nd pass - derives metadata, etc 
+# currently: if there's a thumbnail, assume all processing is complete.
     with GoddamnDatabase(dbpath) as db:
         for i in Image.select().where(Image.thumb == None):
-            try:
-                print("Processing image " + i.path)
-                img = PIL.Image.open(i.path)
-                i.x = img.size[0]
-                i.y = img.size[1]
-                
-                x = 0
-                w = min(img.size)
-                h = w
-                
-                if (img.size[0] > img.size[1]):
-                    x = int((img.size[0] - w) / 2)
-                
-                box = (x, 0, x + w, h)
-                
-                c = img.crop(box)
-                t = c.resize((200, 200), PIL.Image.ANTIALIAS)
-                
-                path_parts = os.path.split(i.path)
-                name_parts = os.path.splitext(path_parts[1])
-                thumb_path = get_directory(config.get('thumbnails', 'path'))
-                
-                thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
-                
-                thumb = get_thumb(thumb_path, thumb_name, name_parts[1])
-                
-                counter = 0
-                while os.path.isfile(thumb):
-                    counter += 1
-                    new_thumb_name = thumb_name + str(counter)
-                    thumb = get_thumb(thumb_path, new_thumb_name, name_parts[1])
-                    
-                t.save(thumb)
-                
-                i.thumb = thumb
-                
-                hist = img.histogram()
-                r = hist[0:256]
-                g = hist[256:512]
-                b = hist[512:768]
-                
-                i.r = sum(i*w for i, w in enumerate(r)) / sum(r)
-                i.g = sum(i*w for i, w in enumerate(g)) / sum(g)
-                i.b = sum(i*w for i, w in enumerate(b)) / sum(b)
-                
-                i.save()
-            except Exception as ex:
-                print("Unable to process image " + i.path + ": " + str(ex))
+            extract_image_metadata(i)
+            make_thumbnail(i)
+            derive_average_color(i)
+
+def extract_image_metadata(i):
+# function determines image dimensions
+    try:
+        print("Grabbing metadata for image " + i.path)
+        img = PIL.Image.open(i.path)
+        i.x = img.size[0]
+        i.y = img.size[1]
+        i.save()
+
+    except Exception as ex:
+        print("Unable to obtain metadata for image " + i.path + ": " + str(ex))
+
+
+def make_thumbnail(i):
+# function generates 200px square thumbnail
+
+# TOFIX: Indexed image thumb generation is super busted
+# TODO: Make all thumbs jpegs
+# TODO: Except if we can make animated gif thumbs animate
+
+    try:
+        print("Thumbnailing image " + i.path)
+        img = PIL.Image.open(i.path)
+        
+        x = 0
+        w = min(img.size)
+        h = w
+        
+        if (img.size[0] > img.size[1]):
+            x = int((img.size[0] - w) / 2)
+        
+        box = (x, 0, x + w, h)
+        
+        c = img.crop(box)
+        t = c.resize((200, 200), PIL.Image.ANTIALIAS)
+        
+        path_parts = os.path.split(i.path)
+        name_parts = os.path.splitext(path_parts[1])
+        thumb_path = get_directory(config.get('thumbnails', 'path'))
+        
+        thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
+        
+        thumb = get_thumb(thumb_path, thumb_name, name_parts[1])
+        
+        counter = 0
+        while os.path.isfile(thumb):
+            counter += 1
+            new_thumb_name = thumb_name + str(counter)
+            thumb = get_thumb(thumb_path, new_thumb_name, name_parts[1])
+            
+        t.save(thumb)
+        
+        i.thumb = thumb
+
+        i.save()
+
+    except Exception as ex:
+        print("Unable to generate thumb for image " + i.path + ": " + str(ex))
+
+
+def derive_average_color(i):
+# function determines average color from histogram
+
+# TOFIX: Does not work on non-RGB images.
+
+    try:
+        img = PIL.Image.open(i.path)
+        hist = img.histogram()
+        r = hist[0:256]
+        g = hist[256:512]
+        b = hist[512:768]
+        
+        i.r = sum(i*w for i, w in enumerate(r)) / sum(r)
+        i.g = sum(i*w for i, w in enumerate(g)) / sum(g)
+        i.b = sum(i*w for i, w in enumerate(b)) / sum(b)
+        
+        i.save()
+    except Exception as ex:
+        print("Unable to find average color for image " + i.path + ": " + str(ex))
+
+def derive_frequent_colors(image):
+    #lol
+    print("Functionality not implemented.")
