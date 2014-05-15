@@ -144,7 +144,7 @@ def make_thumbnail(i):
 def derive_average_color(i):
 # function determines average color from histogram
 
-# TOFIX: Does not work on non-RGB images.
+# TOFIX: Does not work on non-RGB images. See issue #6.
 
     try:
         img = PIL.Image.open(i.path)
