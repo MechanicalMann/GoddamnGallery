@@ -42,6 +42,9 @@
     <div style="clear: both;"></div>
     % if total_pages > 1:
     <p class="text-center">
+        % if page > 1:
+        <a href="/">|&lt;</a>
+        % endif
         % if page == 2:
         <a href="/">&lt;</a>
         % elif page > 2:
@@ -52,6 +55,7 @@
         
         % if page < total_pages:
         <a href="/page/${page + 1}">&gt;</a>
+        <a href="/page/${total_pages}">&gt;|</a>
         % endif
     </p>
     % endif
