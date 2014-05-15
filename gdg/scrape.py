@@ -88,6 +88,17 @@ def scrape_images():
             make_thumbnail(i)
             derive_average_color(i)
 
+def normalize_image(image):
+# ensures passed in PIL.Image is RGB
+    # If the image isn't RGB, convert it to RGB.
+    if (image.mode != "RGB"):
+        try:
+            image = image.convert("RGB")
+        except Exception as ex:
+            print("RGB conversion error for image " + i.path + ": " + str(ex))
+    return image
+
+
 def extract_image_metadata(i):
 # function determines image dimensions
     try:
@@ -104,14 +115,11 @@ def extract_image_metadata(i):
 def make_thumbnail(i):
 # function generates 200px square thumbnail
 
-# TOFIX: Indexed image thumb generation is super busted
-# TODO: Make all thumbs jpegs
-# TODO: Except if we can make animated gif thumbs animate
-
     try:
         print("Thumbnailing image " + i.path)
         img = PIL.Image.open(i.path)
-        
+        img = normalize_image(img)
+
         x = 0
         w = min(img.size)
         h = w
@@ -130,15 +138,15 @@ def make_thumbnail(i):
         
         thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
         
-        thumb = get_thumb(thumb_path, thumb_name, name_parts[1])
+        thumb = get_thumb(thumb_path, thumb_name, ".jpg")
         
         counter = 0
         while os.path.isfile(thumb):
             counter += 1
             new_thumb_name = thumb_name + str(counter)
-            thumb = get_thumb(thumb_path, new_thumb_name, name_parts[1])
+            thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") 
             
-        t.save(thumb)
+        t.save(thumb, "JPEG")
         
         i.thumb = thumb
 
@@ -151,10 +159,13 @@ def make_thumbnail(i):
 def derive_average_color(i):
 # function determines average color from histogram
 
-# TOFIX: Does not work on non-RGB images. See issue #6.
+# TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
+        print("Getting average color of image " + i.path)
         img = PIL.Image.open(i.path)
+        img = normalize_image(img)
+        
         hist = img.histogram()
         r = hist[0:256]
         g = hist[256:512]
