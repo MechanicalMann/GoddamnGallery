@@ -97,10 +97,6 @@ def extract_image_metadata(i):
 def make_thumbnail(i):
 # function generates 200px square thumbnail
 
-# TOFIX: Indexed image thumb generation is super busted
-# TODO: Make all thumbs jpegs
-# TODO: Except if we can make animated gif thumbs animate
-
     try:
         print("Thumbnailing image " + i.path)
         img = PIL.Image.open(i.path)
@@ -151,10 +147,19 @@ def make_thumbnail(i):
 def derive_average_color(i):
 # function determines average color from histogram
 
-# TOFIX: Does not work on non-RGB images. See issue #6.
+# TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
+        print("Getting average color of image " + i.path)
         img = PIL.Image.open(i.path)
+
+        # If the image isn't RGB, convert it to RGB.
+        if (img.mode != "RGB"):
+            try:
+                img = img.convert("RGB")
+            except Exception as ex:
+                print("RGB conversion error for image " + i.path + ": " + str(ex))
+        
         hist = img.histogram()
         r = hist[0:256]
         g = hist[256:512]
