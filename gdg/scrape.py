@@ -133,13 +133,13 @@ def make_thumbnail(i):
         
         thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
         
-        thumb = get_thumb(thumb_path, thumb_name, ".jpg") #name_parts[1])
+        thumb = get_thumb(thumb_path, thumb_name, ".jpg")
         
         counter = 0
         while os.path.isfile(thumb):
             counter += 1
             new_thumb_name = thumb_name + str(counter)
-            thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") #name_parts[1])
+            thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") 
             
         t.save(thumb, "JPEG")
         
