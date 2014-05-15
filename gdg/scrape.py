@@ -104,7 +104,14 @@ def make_thumbnail(i):
     try:
         print("Thumbnailing image " + i.path)
         img = PIL.Image.open(i.path)
-        
+       
+        # If the image isn't RGB, convert it to RGB.
+        if (img.mode != "RGB"):
+            try:
+                img = img.convert("RGB")
+            except Exception as ex:
+                print("RGB conversion error for image " + i.path + ": " + str(ex))
+
         x = 0
         w = min(img.size)
         h = w
@@ -123,15 +130,15 @@ def make_thumbnail(i):
         
         thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
         
-        thumb = get_thumb(thumb_path, thumb_name, name_parts[1])
+        thumb = get_thumb(thumb_path, thumb_name, ".jpg") #name_parts[1])
         
         counter = 0
         while os.path.isfile(thumb):
             counter += 1
             new_thumb_name = thumb_name + str(counter)
-            thumb = get_thumb(thumb_path, new_thumb_name, name_parts[1])
+            thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") #name_parts[1])
             
-        t.save(thumb)
+        t.save(thumb, "JPEG")
         
         i.thumb = thumb
 
