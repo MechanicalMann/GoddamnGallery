@@ -1,9 +1,10 @@
 import os
 import cherrypy
 import gdg
-from gdg.data import *
+from urlparse import urljoin
 from mako.template import Template
 from mako.lookup import TemplateLookup
+from gdg.data import *
 
 # Content is relative to the base directory, not the module directory.
 current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -14,10 +15,10 @@ class ImageModel(object):
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
-def get_relative_path(path):
+def get_relative_path(base, path):
     if path == None:
         return None
-    return path.replace(current_dir, "")
+    return urljoin(base, os.path.relpath(path).replace('\\', '/'))
 
 def filesize(num):
     for x in ['bytes','KB','MB','GB']:
@@ -39,11 +40,13 @@ def get_model(img):
     else:
         color = "#FFFFFF"
         grey = 255
+
+    baseurl = cherrypy.request.base
     
     model = {
-        'path': get_relative_path(img.path),
+        'path': get_relative_path(baseurl, img.path),
         'file': filename,
-        'thumb': get_relative_path(img.thumb),
+        'thumb': get_relative_path(baseurl, img.thumb),
         'average_color': color,
         'size_x': img.x,
         'size_y': img.y,
