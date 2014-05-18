@@ -2,6 +2,7 @@ import os
 import mimetypes
 import ConfigParser
 import PIL
+from multiprocessing import Pool
 from PIL import Image
 from peewee import *
 import gdg
@@ -66,7 +67,7 @@ def scrape_images():
                     i = Image()
                     i.path = f
                     i.save()
-                    print("Found new image: " + f)
+                print("Added {} new images.".format(len(new_files)))
                     
         if len(deleted_files) > 0:
             with db.transaction():
@@ -78,15 +79,49 @@ def scrape_images():
                     except Exception as ex:
                         print("Unable to delete thumbnail for deleted image: {}.  You will need to remove this manually.".format(img.thumb))
                     img.delete_instance()
-                    print("Removed record of deleted image " + f)
+                print("Removed records for {} deleted images.".format(len(deleted_files)))
 
     # 2nd pass - derives metadata, etc 
     # currently: if there's a thumbnail, assume all processing is complete.
     with GoddamnDatabase(dbpath) as db:
-        for i in Image.select().where(Image.thumb == None):
-            extract_image_metadata(i)
-            make_thumbnail(i)
-            derive_average_color(i)
+        q = Image.select().where(Image.thumb == None).naive()
+        total = q.count()
+        if total == 0:
+            return
+
+        thumb_path = get_directory(config.get('thumbnails', 'path'))
+        thumb_prefix = config.get('thumbnails', 'prefix').translate(None, '"\'')
+        thumb_postfix = config.get('thumbnails', 'postfix').translate(None, '"\'')
+
+        pool = Pool()
+        to_save = []
+        try:
+            result = pool.map_async(scrape_image_data, [(i, thumb_path, thumb_prefix, thumb_postfix) for i in q.iterator()], 25)
+            to_save = result.get()
+        except KeyboardInterrupt:
+            pool.terminate()
+            print("Scrape halted.")
+            return
+
+        # Should this be a configuration variable?
+        bsize = 50
+
+        for b in range(0, len(to_save), bsize):
+            with db.transaction():
+                for i in to_save[b:b+bsize]:
+                    try:
+                        i.save()
+                    except Exception as e:
+                        print("Error saving data for image {}: {}".format(i.path), str(ex))
+
+def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
+    try:
+        extract_image_metadata(i)
+        make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix)
+        derive_average_color(i)
+        return i
+    except Exception as ex:
+        print("Error processing image {}: {}".format(i.path, str(ex)))
 
 def normalize_image(image):
 # ensures passed in PIL.Image is RGB
@@ -95,28 +130,27 @@ def normalize_image(image):
         try:
             image = image.convert("RGB")
         except Exception as ex:
-            print("RGB conversion error for image " + i.path + ": " + str(ex))
+            print("RGB conversion error for image {}: {}".format(i.path, str(ex)))
     return image
 
 
 def extract_image_metadata(i):
 # function determines image dimensions
     try:
-        print("Grabbing metadata for image " + i.path)
+        # print("Grabbing metadata for image " + i.path)
         img = PIL.Image.open(i.path)
         i.x = img.size[0]
         i.y = img.size[1]
-        i.save()
 
     except Exception as ex:
-        print("Unable to obtain metadata for image " + i.path + ": " + str(ex))
+        print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i):
+def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
 # function generates 200px square thumbnail
 
     try:
-        print("Thumbnailing image " + i.path)
+        # print("Thumbnailing image " + i.path)
         img = PIL.Image.open(i.path)
         img = normalize_image(img)
 
@@ -134,9 +168,8 @@ def make_thumbnail(i):
         
         path_parts = os.path.split(i.path)
         name_parts = os.path.splitext(path_parts[1])
-        thumb_path = get_directory(config.get('thumbnails', 'path'))
         
-        thumb_name = config.get('thumbnails', 'prefix').translate(None, '"\'') + name_parts[0] + config.get('thumbnails', 'postfix').translate(None, '"\'')
+        thumb_name = thumb_prefix + name_parts[0] + thumb_postfix
         
         thumb = get_thumb(thumb_path, thumb_name, ".jpg")
         
@@ -150,10 +183,8 @@ def make_thumbnail(i):
         
         i.thumb = thumb
 
-        i.save()
-
     except Exception as ex:
-        print("Unable to generate thumb for image " + i.path + ": " + str(ex))
+        print("Unable to generate thumb for image {}: {}".format(i.path, str(ex)))
 
 
 def derive_average_color(i):
@@ -162,7 +193,7 @@ def derive_average_color(i):
 # TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
-        print("Getting average color of image " + i.path)
+        # print("Getting average color of image " + i.path)
         img = PIL.Image.open(i.path)
         img = normalize_image(img)
         
@@ -175,9 +206,8 @@ def derive_average_color(i):
         i.g = sum(i*w for i, w in enumerate(g)) / sum(g)
         i.b = sum(i*w for i, w in enumerate(b)) / sum(b)
         
-        i.save()
     except Exception as ex:
-        print("Unable to find average color for image " + i.path + ": " + str(ex))
+        print("Unable to find average color for image {}: {}".format(i.path, str(ex)))
 
 def derive_frequent_colors(image):
     #lol
