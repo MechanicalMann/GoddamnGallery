@@ -109,6 +109,7 @@ def scrape_images():
         for b in range(0, len(to_save), bsize):
             with db.transaction():
                 for i in to_save[b:b+bsize]:
+                    if i == None: continue
                     try:
                         i.save()
                     except Exception as e:
