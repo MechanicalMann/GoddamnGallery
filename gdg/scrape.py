@@ -137,7 +137,7 @@ def normalize_image(image):
     return image
 
 
-def extract_image_metadata(i):
+def extract_image_metadata(i, img):
 # function determines image dimensions
     try:
         # print("Grabbing metadata for image " + i.path)
@@ -148,7 +148,7 @@ def extract_image_metadata(i):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
 # function generates 200px square thumbnail
 
     try:
@@ -187,7 +187,7 @@ def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
         print("Unable to generate thumb for image {}: {}".format(i.path, str(ex)))
 
 
-def derive_average_color(i):
+def derive_average_color(i, img):
 # function determines average color from histogram
 
 # TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
