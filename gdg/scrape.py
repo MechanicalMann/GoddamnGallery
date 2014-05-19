@@ -116,9 +116,12 @@ def scrape_images():
 
 def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
     try:
-        extract_image_metadata(i)
-        make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix)
-        derive_average_color(i)
+        # open image
+        image = PIL.Image.open(i.path)
+        image = normalize_image(image)
+        extract_image_metadata(i, image)
+        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix)
+        derive_average_color(i, image)
         return i
     except Exception as ex:
         print("Error processing image {}: {}".format(i.path, str(ex)))
@@ -138,7 +141,6 @@ def extract_image_metadata(i):
 # function determines image dimensions
     try:
         # print("Grabbing metadata for image " + i.path)
-        img = PIL.Image.open(i.path)
         i.x = img.size[0]
         i.y = img.size[1]
 
@@ -151,8 +153,6 @@ def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
 
     try:
         # print("Thumbnailing image " + i.path)
-        img = PIL.Image.open(i.path)
-        img = normalize_image(img)
 
         x = 0
         w = min(img.size)
@@ -194,8 +194,6 @@ def derive_average_color(i):
 
     try:
         # print("Getting average color of image " + i.path)
-        img = PIL.Image.open(i.path)
-        img = normalize_image(img)
         
         hist = img.histogram()
         r = hist[0:256]
