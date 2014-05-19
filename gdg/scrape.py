@@ -116,9 +116,12 @@ def scrape_images():
 
 def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
     try:
-        extract_image_metadata(i)
-        make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix)
-        derive_average_color(i)
+        # open image
+        image = PIL.Image.open(i.path)
+        image = normalize_image(image)
+        extract_image_metadata(i, image)
+        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix)
+        derive_average_color(i, image)
         return i
     except Exception as ex:
         print("Error processing image {}: {}".format(i.path, str(ex)))
@@ -134,11 +137,10 @@ def normalize_image(image):
     return image
 
 
-def extract_image_metadata(i):
+def extract_image_metadata(i, img):
 # function determines image dimensions
     try:
         # print("Grabbing metadata for image " + i.path)
-        img = PIL.Image.open(i.path)
         i.x = img.size[0]
         i.y = img.size[1]
 
@@ -146,13 +148,11 @@ def extract_image_metadata(i):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
 # function generates 200px square thumbnail
 
     try:
         # print("Thumbnailing image " + i.path)
-        img = PIL.Image.open(i.path)
-        img = normalize_image(img)
 
         x = 0
         w = min(img.size)
@@ -187,15 +187,13 @@ def make_thumbnail(i, thumb_path, thumb_prefix, thumb_postfix):
         print("Unable to generate thumb for image {}: {}".format(i.path, str(ex)))
 
 
-def derive_average_color(i):
+def derive_average_color(i, img):
 # function determines average color from histogram
 
 # TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
         # print("Getting average color of image " + i.path)
-        img = PIL.Image.open(i.path)
-        img = normalize_image(img)
         
         hist = img.histogram()
         r = hist[0:256]
