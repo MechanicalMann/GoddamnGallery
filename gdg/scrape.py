@@ -3,7 +3,7 @@ import mimetypes
 import ConfigParser
 import PIL
 from multiprocessing import Pool
-from PIL import Image
+from PIL import Image, ImageOps
 from peewee import *
 import gdg
 from gdg.data import *
@@ -141,7 +141,6 @@ def normalize_image(image):
 def extract_image_metadata(i, img):
 # function determines image dimensions
     try:
-        # print("Grabbing metadata for image " + i.path)
         i.x = img.size[0]
         i.y = img.size[1]
 
@@ -149,23 +148,30 @@ def extract_image_metadata(i, img):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
-# function generates 200px square thumbnail
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, square="new"):
+# function generates 200px (square/ratio-maintained) thumbnail
+# NOTE: img is set to this reduced size thumbnail
 
     try:
-        # print("Thumbnailing image " + i.path)
+        # TODO: configurable thumb size 
+        size = (200, 200)
+        if (square == "new"):
+            img = ImageOps.fit(img, size, PIL.Image.ANTIALIAS)
+        elif (square == "old"):
+            x = 0
+            w = min(img.size)
+            h = w
+            
+            if (img.size[0] > img.size[1]):
+                x = int((img.size[0] - w) / 2)
+            
+            box = (x, 0, x + w, h)
+            
+            c = img.crop(box)
+            img = c.resize(size, PIL.Image.ANTIALIAS)
+        else:
+            img.thumbnail(size, PIL.Image.ANTIALIAS)
 
-        x = 0
-        w = min(img.size)
-        h = w
-        
-        if (img.size[0] > img.size[1]):
-            x = int((img.size[0] - w) / 2)
-        
-        box = (x, 0, x + w, h)
-        
-        c = img.crop(box)
-        t = c.resize((200, 200), PIL.Image.ANTIALIAS)
         
         path_parts = os.path.split(i.path)
         name_parts = os.path.splitext(path_parts[1])
@@ -180,7 +186,7 @@ def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
             new_thumb_name = thumb_name + str(counter)
             thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") 
             
-        t.save(thumb, "JPEG")
+        img.save(thumb, "JPEG")
         
         i.thumb = thumb
 
@@ -194,8 +200,6 @@ def derive_average_color(i, img):
 # TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
-        # print("Getting average color of image " + i.path)
-        
         hist = img.histogram()
         r = hist[0:256]
         g = hist[256:512]
