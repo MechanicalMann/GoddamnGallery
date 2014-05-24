@@ -27,7 +27,7 @@
             <div class="average-color" style="background: ${i.average_color}">
                 <div class="image-info">
                     <small class="${infocolor}">
-                        ${infosize}${i.filesize}: /${i.gallery}
+                        ${infosize}${i.filesize}
                     </small>
                 </div>
             </div>
@@ -43,19 +43,19 @@
     % if total_pages > 1:
     <p class="text-center">
         % if page > 1:
-        <a href="/">|&lt;</a>
+        <a href="${baseurl}">|&lt;</a>
         % endif
         % if page == 2:
-        <a href="/">&lt;</a>
+        <a href="${baseurl}">&lt;</a>
         % elif page > 2:
-        <a href="/page/${page - 1}">&lt;</a>
+        <a href="${baseurl}/page/${page - 1}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
         
         % if page < total_pages:
-        <a href="/page/${page + 1}">&gt;</a>
-        <a href="/page/${total_pages}">&gt;|</a>
+        <a href="${baseurl}/page/${page + 1}">&gt;</a>
+        <a href="${baseurl}/page/${total_pages}">&gt;|</a>
         % endif
     </p>
     % endif
