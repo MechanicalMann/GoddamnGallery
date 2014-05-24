@@ -1,5 +1,43 @@
-<%inherit file="base.html"/>
+<%inherit file="base.html" />
 <h1 class="text-center">${title}</h1>
+
+    <ol class="breadcrumb">
+    % if gallery == "":
+        <li class="active">Home</li>
+    % else:
+        <li><a href="${baseurl}">Home</a></li>
+    % endif
+        
+
+    % if not parent_gallery == "":
+    <%
+    parentpath = ""
+    %>
+    % for pg in parent_gallery.split('/'):
+        <%
+        parentpath = parentpath + "/" + pg
+        %>
+        <li><a href="${baseurl + parentpath}">${pg}</a></li>
+    % endfor
+    % endif
+
+    % if not gallery == "":
+        <li class="active">${gallery.split('/')[-1]}</li>
+    % endif
+
+    % if len(children) > 0:
+        <li>
+        % for cg in children:
+            <%
+            comma = ","
+            if loop.last:
+                comma = ""
+            %>
+            <a href="${baseurl + '/' + cg}">${cg.split('/')[-1]}</a>${comma}
+        % endfor
+        </li>
+    % endif
+    </ol>
 
 % if not images == None and len(images) > 0:
     <ul class="image-list center-block">
@@ -43,19 +81,19 @@
     % if total_pages > 1:
     <p class="text-center">
         % if page > 1:
-        <a href="${baseurl}">|&lt;</a>
+        <a href="${gallery_url}">|&lt;</a>
         % endif
         % if page == 2:
-        <a href="${baseurl}">&lt;</a>
+        <a href="${gallery_url}">&lt;</a>
         % elif page > 2:
-        <a href="${baseurl}/page/${page - 1}">&lt;</a>
+        <a href="${gallery_url}/page/${page - 1}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
         
         % if page < total_pages:
-        <a href="${baseurl}/page/${page + 1}">&gt;</a>
-        <a href="${baseurl}/page/${total_pages}">&gt;|</a>
+        <a href="${gallery_url}/page/${page + 1}">&gt;</a>
+        <a href="${gallery_url}/page/${total_pages}">&gt;|</a>
         % endif
     </p>
     % endif

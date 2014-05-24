@@ -61,24 +61,36 @@ def get_model(img):
     return ImageModel(**model)
     
 def get_viewmodel():
-    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'baseurl': '', 'gallery': '', 'parent': '', 'children': [] }
+    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'baseurl': '', 'gallery_url': '', 'gallery': '', 'parent_gallery': '', 'children': [] }
 
 def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     if model == None:
         model = get_viewmodel()
 
+    while gallery.startswith('/'): gallery = gallery[1:]
+    while gallery.endswith('/'): gallery = gallery[:-1]
+
     baseurl = cherrypy.request.base
     model['gallery'] = gallery
 
-    if not gallery == None:
-        baseurl = urljoin(baseurl, gallery)
+    if not gallery == "":
+        gallery_url = urljoin(baseurl, gallery)
+        parent_gallery = os.path.dirname(gallery)
+    else:
+        gallery_url = baseurl
+        parent_gallery = ""
 
     model['baseurl'] = baseurl
+    model['gallery_url'] = gallery_url
+    model['parent_gallery'] = parent_gallery
     
     with GoddamnDatabase(dbpath):
         q = Image.select().where(Image.gallery == gallery)
         
         count = q.count()
+        if count == 0:
+            return model
+
         model['total_images'] = count
         
         q = q.order_by(Image.path)
@@ -88,6 +100,8 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         q = q.paginate(page, page_size)
         
         model['images'] = [get_model(i) for i in q]
+
+        model['children'] = [i.gallery for i in Image.select().group_by(Image.gallery).having(Image.parent == gallery)]
         
     return model
 
@@ -105,8 +119,7 @@ class GalleryController(object):
         else:
             model['title'] = 'Some Images'
             pagesize = cherrypy.request.app.config['gallery']['images_per_page']
-            while gallery.endswith('/'): gallery = gallery[:-1]
-            while gallery.startswith('/'): gallery = gallery[1:]
+            
             get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery)
         
         return tmp.render(**model)
