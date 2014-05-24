@@ -17,8 +17,10 @@ class ImageModel(object):
 
 def get_relative_path(base, path):
     if path == None:
-        return None
-    return urljoin(base, os.path.relpath(path).replace('\\', '/'))
+        path = ""
+    if not path == "":
+        path = os.path.relpath(path, current_dir)
+    return urljoin(base, path.replace('\\', '/'))
 
 def filesize(num):
     for x in ['bytes','KB','MB','GB']:
@@ -47,6 +49,7 @@ def get_model(img):
         'path': get_relative_path(baseurl, img.path),
         'file': filename,
         'thumb': get_relative_path(baseurl, img.thumb),
+        'gallery': img.gallery,
         'average_color': color,
         'size_x': img.x,
         'size_y': img.y,
@@ -57,14 +60,14 @@ def get_model(img):
     return ImageModel(**model)
     
 def get_viewmodel():
-    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1 }
+    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'gallery': '', 'parent': '', 'children': [] }
 
-def get_images(dbpath, model=None, page=1, page_size=20):
+def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     if model == None:
         model = get_viewmodel()
     
     with GoddamnDatabase(dbpath):
-        q = Image.select()
+        q = Image.select().where(Image.gallery == gallery)
         
         count = q.count()
         model['total_images'] = count
