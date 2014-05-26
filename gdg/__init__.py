@@ -19,7 +19,7 @@ class ImageModel(object):
 
 def get_relative_path(base, path):
     if path == None:
-        path = ""
+        return None
     if not path == "":
         path = os.path.relpath(path, current_dir)
     return urljoin(base, path.replace('\\', '/'))
