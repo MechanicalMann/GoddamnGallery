@@ -15,9 +15,9 @@
     %>
     % for pg in parent_gallery.split('/'):
         <%
-        parentpath = parentpath + "/" + pg
+        parentpath = parentpath + pg + "/"
         %>
-        <li><a href="${baseurl + parentpath}">${pg}</a></li>
+        <li><a href="${urljoin(baseurl, parentpath)}">${pg}</a></li>
     % endfor
     % endif
 
@@ -33,7 +33,7 @@
             if loop.last:
                 comma = ""
             %>
-            <a href="${baseurl + '/' + cg}">${cg.split('/')[-1]}</a>${comma}
+            <a href="${urljoin(baseurl, cg + '/')}">${cg.split('/')[-1]}</a>${comma}
         % endfor
         </li>
     % endif
@@ -86,14 +86,14 @@
         % if page == 2:
         <a href="${gallery_url}">&lt;</a>
         % elif page > 2:
-        <a href="${gallery_url}/page/${page - 1}">&lt;</a>
+        <a href="${urljoin(gallery_url, 'page/', page - 1)}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
         
         % if page < total_pages:
-        <a href="${gallery_url}/page/${page + 1}">&gt;</a>
-        <a href="${gallery_url}/page/${total_pages}">&gt;|</a>
+        <a href="${urljoin(gallery_url, 'page/', page + 1)}">&gt;</a>
+        <a href="${urljoin(gallery_url, 'page/', total_pages)}">&gt;|</a>
         % endif
     </p>
     % endif

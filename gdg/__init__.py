@@ -9,7 +9,7 @@ from gdg.data import *
 # Content is relative to the base directory, not the module directory.
 current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-templates = TemplateLookup(directories=['html'])
+templates = TemplateLookup(directories=['html'], strict_undefined=True)
 
 application = None
 
@@ -45,7 +45,7 @@ def get_model(img):
         color = "#FFFFFF"
         grey = 255
 
-    baseurl = cherrypy.request.base
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
     
     model = {
         'path': get_relative_path(baseurl, img.path),
@@ -70,7 +70,7 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     while gallery.startswith('/'): gallery = gallery[1:]
     while gallery.endswith('/'): gallery = gallery[:-1]
 
-    baseurl = cherrypy.request.base
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
     model['gallery'] = gallery
 
     if not gallery == "":
@@ -122,16 +122,25 @@ class GalleryController(object):
             
             get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery)
         
+        model['urljoin'] = urljoin
         return tmp.render(**model)
 
-def main():
+def configure_routes(script_name=''):
+    cherrypy.config.update('gdg.conf')
+
     dispatch = cherrypy.dispatch.RoutesDispatcher()
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
 
-    application = cherrypy.tree.mount(root=GalleryController(), config='gdg.conf')
+    application = cherrypy.tree.mount(root=None, script_name=script_name, config='gdg.conf')
     application.merge(route_config)
 
+def main():
+    configure_routes()
     cherrypy.engine.start()
     cherrypy.engine.block()
+
+def wsgi(env, start_response, script_name=''):
+    configure_routes(script_name)
+    return cherrypy.tree(env, start_response)
