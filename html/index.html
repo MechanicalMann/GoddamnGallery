@@ -86,14 +86,14 @@
         % if page == 2:
         <a href="${gallery_url}">&lt;</a>
         % elif page > 2:
-        <a href="${urljoin(gallery_url, 'page/', page - 1)}">&lt;</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(page - 1))}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
         
         % if page < total_pages:
-        <a href="${urljoin(gallery_url, 'page/', page + 1)}">&gt;</a>
-        <a href="${urljoin(gallery_url, 'page/', total_pages)}">&gt;|</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(page + 1))}">&gt;</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(total_pages))}">&gt;|</a>
         % endif
     </p>
     % endif

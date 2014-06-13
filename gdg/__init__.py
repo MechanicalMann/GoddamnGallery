@@ -79,6 +79,9 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     else:
         gallery_url = baseurl
         parent_gallery = ""
+    
+    if not gallery_url.endswith('/'):
+        gallery_url += '/'
 
     model['baseurl'] = baseurl
     model['gallery_url'] = gallery_url
