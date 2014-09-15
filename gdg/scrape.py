@@ -165,7 +165,6 @@ def extract_image_metadata(i, img):
 def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, square):
 # function generates 200px (square/ratio-maintained) thumbnail
 # NOTE: img is set to this reduced size thumbnail
-    print square
     try:
         # TODO: configurable thumb size 
         size = (200, 200)
