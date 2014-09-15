@@ -227,3 +227,4 @@ def derive_average_color(i, img):
 
 def derive_frequent_colors(i, img, num_colors=3):
     #lol
+    pass
