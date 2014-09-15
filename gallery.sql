@@ -1,14 +1,16 @@
 
 -- Table: images
 CREATE TABLE images ( 
-    id    INTEGER         PRIMARY KEY AUTOINCREMENT,
-    path  VARCHAR( 255 )  NOT NULL,
-    thumb VARCHAR( 255 ),
-    x     INTEGER,
-    y     INTEGER,
-    r     INTEGER,
-    g     INTEGER,
-    b     INTEGER
+    id      INTEGER         PRIMARY KEY AUTOINCREMENT,
+    path    VARCHAR( 255 )  NOT NULL,
+    thumb   VARCHAR( 255 ),
+    gallery VARCHAR( 255 )  NOT NULL,
+    parent  VARCHAR( 255 ),
+    x       INTEGER,
+    y       INTEGER,
+    r       INTEGER,
+    g       INTEGER,
+    b       INTEGER
 );
 
 -- Table: tags

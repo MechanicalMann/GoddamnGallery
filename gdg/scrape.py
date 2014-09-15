@@ -73,7 +73,17 @@ def scrape_images():
             with db.transaction():
                 for f in new_files:
                     i = Image()
+
+                    g = os.path.dirname(os.path.relpath(f, imgpath)).replace('\\', '/')
+                    
                     i.path = f
+                    i.gallery = g
+
+                    if g == '':
+                        i.parent = None
+                    else:
+                        i.parent = os.path.dirname(g)
+
                     i.save()
                 print("Added {} new images.".format(len(new_files)))
                     

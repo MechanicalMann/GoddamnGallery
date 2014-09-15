@@ -9,7 +9,9 @@ from gdg.data import *
 # Content is relative to the base directory, not the module directory.
 current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-templates = TemplateLookup(directories=['html'])
+templates = TemplateLookup(directories=['html'], strict_undefined=True)
+
+application = None
 
 class ImageModel(object):
     def __init__(self, **entries):
@@ -18,7 +20,9 @@ class ImageModel(object):
 def get_relative_path(base, path):
     if path == None:
         return None
-    return urljoin(base, os.path.relpath(path).replace('\\', '/'))
+    if not path == "":
+        path = os.path.relpath(path, current_dir)
+    return urljoin(base, path.replace('\\', '/'))
 
 def filesize(num):
     for x in ['bytes','KB','MB','GB']:
@@ -41,7 +45,7 @@ def get_model(img):
         color = "#FFFFFF"
         grey = 255
 
-    baseurl = cherrypy.request.base
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
     
     model = {
         'path': get_relative_path(baseurl, img.path),
@@ -57,16 +61,39 @@ def get_model(img):
     return ImageModel(**model)
     
 def get_viewmodel():
-    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1 }
+    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'baseurl': '', 'gallery_url': '', 'gallery': '', 'parent_gallery': '', 'children': [] }
 
-def get_images(dbpath, model=None, page=1, page_size=20):
+def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     if model == None:
         model = get_viewmodel()
+
+    while gallery.startswith('/'): gallery = gallery[1:]
+    while gallery.endswith('/'): gallery = gallery[:-1]
+
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    model['gallery'] = gallery
+
+    if not gallery == "":
+        gallery_url = urljoin(baseurl, gallery)
+        parent_gallery = os.path.dirname(gallery)
+    else:
+        gallery_url = baseurl
+        parent_gallery = ""
+    
+    if not gallery_url.endswith('/'):
+        gallery_url += '/'
+
+    model['baseurl'] = baseurl
+    model['gallery_url'] = gallery_url
+    model['parent_gallery'] = parent_gallery
     
     with GoddamnDatabase(dbpath):
-        q = Image.select()
+        q = Image.select().where(Image.gallery == gallery)
         
         count = q.count()
+        if count == 0:
+            return model
+
         model['total_images'] = count
         
         q = q.order_by(Image.path)
@@ -76,12 +103,14 @@ def get_images(dbpath, model=None, page=1, page_size=20):
         q = q.paginate(page, page_size)
         
         model['images'] = [get_model(i) for i in q]
+
+        model['children'] = [i.gallery for i in Image.select().group_by(Image.gallery).having(Image.parent == gallery)]
         
     return model
 
 class GalleryController(object):
     @cherrypy.expose
-    def index(self):
+    def index(self, gallery="", page="1"):
         tmp = templates.get_template("index.html")
         model = get_viewmodel()
         
@@ -93,22 +122,28 @@ class GalleryController(object):
         else:
             model['title'] = 'Some Images'
             pagesize = cherrypy.request.app.config['gallery']['images_per_page']
-            get_images(dbpath, model, 1, pagesize)
+            
+            get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery)
         
-        return tmp.render(**model)
-    
-    @cherrypy.expose
-    def page(self, page=1):
-        tmp = templates.get_template("index.html")
-        dbpath = cherrypy.request.app.config['database']['path']
-        page_size = cherrypy.request.app.config['gallery']['images_per_page']
-        
-        model = get_images(dbpath, page=int(page), page_size=page_size)
-        model['title'] = 'Some Images'
-        
+        model['urljoin'] = urljoin
         return tmp.render(**model)
 
+def configure_routes(script_name=''):
+    cherrypy.config.update('gdg.conf')
+
+    dispatch = cherrypy.dispatch.RoutesDispatcher()
+    dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
+    dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
+    route_config = { '/': { 'request.dispatch': dispatch } }
+
+    application = cherrypy.tree.mount(root=None, script_name=script_name, config='gdg.conf')
+    application.merge(route_config)
+
 def main():
-    cherrypy.tree.mount(root=GalleryController(), config='gdg.conf')
+    configure_routes()
     cherrypy.engine.start()
     cherrypy.engine.block()
+
+def wsgi(env, start_response, script_name=''):
+    configure_routes(script_name)
+    return cherrypy.tree(env, start_response)

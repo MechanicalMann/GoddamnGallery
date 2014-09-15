@@ -11,6 +11,8 @@ class Image(BaseModel):
     #color = CharField(null=True)
     path = CharField()
     thumb = CharField(null=True)
+    gallery = CharField()
+    parent = CharField(null=True)
     x = IntegerField(null=True)
     y = IntegerField(null=True)
     r = IntegerField(null=True)
