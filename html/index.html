@@ -20,9 +20,11 @@
             infosize = "{} &times; {}, ".format(i.size_x, i.size_y)
         %>
         <li class="image">
-            <a href="${i.path}">
-                <img src="${thumb}" class="img-thumbnail" />
-            </a>
+            <figure>
+                <a href="${i.path}">
+                    <img src="${thumb}" class="img-thumbnail center-block" />
+                </a>
+            </figure>
             
             <div class="average-color" style="background: ${i.average_color}">
                 <div class="image-info">

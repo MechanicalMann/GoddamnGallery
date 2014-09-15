@@ -8,6 +8,14 @@ from peewee import *
 import gdg
 from gdg.data import *
 
+# average color stuff
+from collections import namedtuple
+from math import sqrt
+import random
+
+
+
+
 config = ConfigParser.ConfigParser()
 
 def is_image(file):
@@ -123,6 +131,7 @@ def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
         extract_image_metadata(i, image)
         make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix)
         derive_average_color(i, image)
+        # derive_frequent_colors(i, image)
         return i
     except Exception as ex:
         print("Error processing image {}: {}".format(i.path, str(ex)))
@@ -212,6 +221,78 @@ def derive_average_color(i, img):
     except Exception as ex:
         print("Unable to find average color for image {}: {}".format(i.path, str(ex)))
 
-def derive_frequent_colors(image):
+def derive_frequent_colors(i, img, num_colors=3):
     #lol
-    print("Functionality not implemented.")
+    print("Freq. colors for: {}".format(i.path))
+
+    points = get_points(img)
+    clusters = kmeans(points, num_colors, 1)
+    rgbs = [map(int, c.center.coords) for c in clusters]
+    print(rgbs)
+
+
+# http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/
+
+Point = namedtuple('Point', ('coords', 'n', 'ct'))
+Cluster = namedtuple('Cluster', ('points', 'center', 'n'))
+
+def get_points(img):
+    points = []
+    w, h = img.size
+    for count, color in img.getcolors(w * h):
+        points.append(Point(color, 3, count))
+    return points
+
+rtoh = lambda rgb: '#%s' % ''.join(('%02x' % p for p in rgb))
+
+def colorz(filename, n=3):
+    img = Image.open(filename)
+    img.thumbnail((200, 200))
+    w, h = img.size
+
+    points = get_points(img)
+    clusters = kmeans(points, n, 1)
+    rgbs = [map(int, c.center.coords) for c in clusters]
+    return map(rtoh, rgbs)
+
+def euclidean(p1, p2):
+    return sqrt(sum([
+        (p1.coords[i] - p2.coords[i]) ** 2 for i in range(p1.n)
+    ]))
+
+def calculate_center(points, n):
+    vals = [0.0 for i in range(n)]
+    plen = 0
+    for p in points:
+        plen += p.ct
+        for i in range(n):
+            vals[i] += (p.coords[i] * p.ct)
+    return Point([(v / plen) for v in vals], n, 1)
+
+def kmeans(points, k, min_diff):
+    clusters = [Cluster([p], p, p.n) for p in random.sample(points, k)]
+
+    while 1:
+        plists = [[] for i in range(k)]
+
+        for p in points:
+            smallest_distance = float('Inf')
+            for i in range(k):
+                distance = euclidean(p, clusters[i].center)
+                if distance < smallest_distance:
+                    smallest_distance = distance
+                    idx = i
+            plists[idx].append(p)
+
+        diff = 0
+        for i in range(k):
+            old = clusters[i]
+            center = calculate_center(plists[i], old.n)
+            new = Cluster(plists[i], center, old.n)
+            clusters[i] = new
+            diff = max(diff, euclidean(old.center, new.center))
+
+        if diff < min_diff:
+            break
+
+    return clusters
