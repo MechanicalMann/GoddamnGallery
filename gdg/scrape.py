@@ -104,11 +104,12 @@ def scrape_images():
         thumb_path = get_directory(config.get('thumbnails', 'path'))
         thumb_prefix = config.get('thumbnails', 'prefix').translate(None, '"\'')
         thumb_postfix = config.get('thumbnails', 'postfix').translate(None, '"\'')
+        thumb_square = config.get('thumbnails', 'square').strip('"')
 
         pool = Pool()
         to_save = []
         try:
-            result = pool.map_async(scrape_image_data, [(i, thumb_path, thumb_prefix, thumb_postfix) for i in q.iterator()], 25)
+            result = pool.map_async(scrape_image_data, [(i, thumb_path, thumb_prefix, thumb_postfix, thumb_square) for i in q.iterator()], 25)
             to_save = result.get()
         except KeyboardInterrupt:
             pool.terminate()
@@ -127,13 +128,13 @@ def scrape_images():
                     except Exception as e:
                         print("Error saving data for image {}: {}".format(i.path), str(ex))
 
-def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
+def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix, thumb_square)):
     try:
         # open image
         image = PIL.Image.open(i.path)
         image = normalize_image(image)
         extract_image_metadata(i, image)
-        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix)
+        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix, thumb_square)
         derive_average_color(i, image)
         # derive_frequent_colors(i, image)
         return i
@@ -161,10 +162,10 @@ def extract_image_metadata(i, img):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, square="new"):
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, square):
 # function generates 200px (square/ratio-maintained) thumbnail
 # NOTE: img is set to this reduced size thumbnail
-
+    print square
     try:
         # TODO: configurable thumb size 
         size = (200, 200)
