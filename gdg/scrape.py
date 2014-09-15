@@ -8,12 +8,6 @@ from peewee import *
 import gdg
 from gdg.data import *
 
-# average color stuff
-from collections import namedtuple
-from math import sqrt
-import random
-
-
 
 
 config = ConfigParser.ConfigParser()
