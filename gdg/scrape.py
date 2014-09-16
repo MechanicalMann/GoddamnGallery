@@ -162,15 +162,15 @@ def extract_image_metadata(i, img):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, aspect_ratio):
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, thumb_aspect_ratio):
 # function generates 200px (square/ratio-maintained) thumbnail
 # NOTE: img is set to this reduced size thumbnail
     try:
         # TODO: configurable thumb size 
         size = (200, 200)
-        if (aspect_ratio == "square"):
+        if (thumb_aspect_ratio == "square"):
             img = ImageOps.fit(img, size, PIL.Image.ANTIALIAS)
-        elif (aspect_ratio == "top_square"):
+        elif (thumb_aspect_ratio == "top_square"):
             x = 0
             w = min(img.size)
             h = w
