@@ -3,10 +3,12 @@ import mimetypes
 import ConfigParser
 import PIL
 from multiprocessing import Pool
-from PIL import Image
+from PIL import Image, ImageOps
 from peewee import *
 import gdg
 from gdg.data import *
+
+
 
 config = ConfigParser.ConfigParser()
 
@@ -102,11 +104,12 @@ def scrape_images():
         thumb_path = get_directory(config.get('thumbnails', 'path'))
         thumb_prefix = config.get('thumbnails', 'prefix').translate(None, '"\'')
         thumb_postfix = config.get('thumbnails', 'postfix').translate(None, '"\'')
+        thumb_aspect_ratio = config.get('thumbnails', 'aspect_ratio').translate(None, '"\'')
 
         pool = Pool()
         to_save = []
         try:
-            result = pool.map_async(scrape_image_data, [(i, thumb_path, thumb_prefix, thumb_postfix) for i in q.iterator()], 25)
+            result = pool.map_async(scrape_image_data, [(i, thumb_path, thumb_prefix, thumb_postfix, thumb_aspect_ratio) for i in q.iterator()], 25)
             to_save = result.get()
         except KeyboardInterrupt:
             pool.terminate()
@@ -125,14 +128,15 @@ def scrape_images():
                     except Exception as e:
                         print("Error saving data for image {}: {}".format(i.path), str(ex))
 
-def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix)):
+def scrape_image_data((i, thumb_path, thumb_prefix, thumb_postfix, thumb_aspect_ratio)):
     try:
         # open image
         image = PIL.Image.open(i.path)
         image = normalize_image(image)
         extract_image_metadata(i, image)
-        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix)
+        make_thumbnail(i, image, thumb_path, thumb_prefix, thumb_postfix, thumb_aspect_ratio)
         derive_average_color(i, image)
+        # derive_frequent_colors(i, image)
         return i
     except Exception as ex:
         print("Error processing image {}: {}".format(i.path, str(ex)))
@@ -151,7 +155,6 @@ def normalize_image(image):
 def extract_image_metadata(i, img):
 # function determines image dimensions
     try:
-        # print("Grabbing metadata for image " + i.path)
         i.x = img.size[0]
         i.y = img.size[1]
 
@@ -159,23 +162,29 @@ def extract_image_metadata(i, img):
         print("Unable to obtain metadata for image {}: {}".format(i.path, str(ex)))
 
 
-def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
-# function generates 200px square thumbnail
-
+def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix, thumb_aspect_ratio):
+# function generates 200px (square/ratio-maintained) thumbnail
+# NOTE: img is set to this reduced size thumbnail
     try:
-        # print("Thumbnailing image " + i.path)
+        # TODO: configurable thumb size 
+        size = (200, 200)
+        if (thumb_aspect_ratio == "square"):
+            img = ImageOps.fit(img, size, PIL.Image.ANTIALIAS)
+        elif (thumb_aspect_ratio == "top_square"):
+            x = 0
+            w = min(img.size)
+            h = w
+            
+            if (img.size[0] > img.size[1]):
+                x = int((img.size[0] - w) / 2)
+            
+            box = (x, 0, x + w, h)
+            
+            c = img.crop(box)
+            img = c.resize(size, PIL.Image.ANTIALIAS)
+        else:   # "proportional"
+            img.thumbnail(size, PIL.Image.ANTIALIAS)
 
-        x = 0
-        w = min(img.size)
-        h = w
-        
-        if (img.size[0] > img.size[1]):
-            x = int((img.size[0] - w) / 2)
-        
-        box = (x, 0, x + w, h)
-        
-        c = img.crop(box)
-        t = c.resize((200, 200), PIL.Image.ANTIALIAS)
         
         path_parts = os.path.split(i.path)
         name_parts = os.path.splitext(path_parts[1])
@@ -190,7 +199,7 @@ def make_thumbnail(i, img, thumb_path, thumb_prefix, thumb_postfix):
             new_thumb_name = thumb_name + str(counter)
             thumb = get_thumb(thumb_path, new_thumb_name, ".jpg") 
             
-        t.save(thumb, "JPEG")
+        img.save(thumb, "JPEG")
         
         i.thumb = thumb
 
@@ -204,8 +213,6 @@ def derive_average_color(i, img):
 # TOFIX: Do not convert non-RGB images to RGB. This should save calc time.
 
     try:
-        # print("Getting average color of image " + i.path)
-        
         hist = img.histogram()
         r = hist[0:256]
         g = hist[256:512]
@@ -218,6 +225,6 @@ def derive_average_color(i, img):
     except Exception as ex:
         print("Unable to find average color for image {}: {}".format(i.path, str(ex)))
 
-def derive_frequent_colors(image):
+def derive_frequent_colors(i, img, num_colors=3):
     #lol
-    print("Functionality not implemented.")
+    pass
