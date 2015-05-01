@@ -139,17 +139,19 @@ class GalleryController(object):
         
         model['urljoin'] = urljoin
         return tmp.render(**model)
-        
+
+class ApiController(object):
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def search(self, image=""):
-        return find_image(image)
+    def search(self, q=""):
+        return { "query" : q, "results" : find_image(q) }
 
 def configure_routes(script_name=''):
     cherrypy.config.update('gdg.conf')
 
     dispatch = cherrypy.dispatch.RoutesDispatcher()
-    dispatch.connect("search", "/search/{image:.*?}", GalleryController(), action="search")
+    dispatch.connect("api", "/api/{action}/{id}", ApiController())
+    dispatch.connect("api", "/api/{action}", ApiController())
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
