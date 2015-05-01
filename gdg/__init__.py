@@ -177,7 +177,7 @@ class ApiController(object):
             return "You haven't configured the goddamn web hook."
         
         try:
-            message = { "text": "<{}>".format(result[0]), "channel": kwargs['channel_name'] }
+            message = { "text": "<{}>".format(result[0]), "channel": kwargs['channel_id'] }
             
             icon = cherrypy.request.app.config['slack']['icon_url']
             emoji = cherrypy.request.app.config['slack']['icon_emoji']
