@@ -1,4 +1,5 @@
 import os
+import re
 import cherrypy
 import gdg
 from urlparse import urljoin
@@ -107,6 +108,17 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         model['children'] = [i.gallery for i in Image.select().group_by(Image.gallery).having(Image.parent == gallery)]
         
     return model
+    
+def find_image(name):
+    if name == None or name == "":
+        return [];
+        
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    dbpath = cherrypy.request.app.config['database']['path']
+    pattern = "[\\\/]" + re.escape(name) + "\..{2,}$"
+    
+    with GoddamnDatabase(dbpath):
+        return [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern))]
 
 class GalleryController(object):
     @cherrypy.expose
@@ -127,11 +139,17 @@ class GalleryController(object):
         
         model['urljoin'] = urljoin
         return tmp.render(**model)
+        
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def search(self, image=""):
+        return find_image(image)
 
 def configure_routes(script_name=''):
     cherrypy.config.update('gdg.conf')
 
     dispatch = cherrypy.dispatch.RoutesDispatcher()
+    dispatch.connect("search", "/search/{image:.*?}", GalleryController(), action="search")
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
