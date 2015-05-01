@@ -1,8 +1,10 @@
 import os
 import re
+import httplib
+import json
 import cherrypy
 import gdg
-from urlparse import urljoin
+from urlparse import urljoin, urlparse
 from mako.template import Template
 from mako.lookup import TemplateLookup
 from gdg.data import *
@@ -156,6 +158,45 @@ class ApiController(object):
     @cherrypy.tools.json_out()
     def search(self, q=""):
         return { "query" : q, "results" : find_image(q) }
+    
+    @cherrypy.expose
+    def slack(self, **kwargs):
+        if not 'slack' in cherrypy.request.app.config:
+            return "You haven't configured your goddamn Slack integration at all."
+        
+        text = kwargs.get('text', '')
+        if text == None or text == '':
+            return "You need to enter an image name to search for."
+            
+        result = find_image(text)
+        if len(result) == 0:
+            return "No images were found that matched \"{}.\"".format(text)
+            
+        url = cherrypy.request.app.config['slack']['webhook_url']
+        if url == None or url == '':
+            return "You haven't configured the goddamn web hook."
+        
+        try:
+            message = { "text": "<{}>".format(result[0]), "channel": kwargs['channel_name'] }
+            
+            icon = cherrypy.request.app.config['slack']['icon_url']
+            emoji = cherrypy.request.app.config['slack']['icon_emoji']
+            username = cherrypy.request.app.config['slack']['username']
+            
+            if not icon == None and not icon == "":
+                message['icon_url'] = icon
+            elif not emoji == None and not icon == "":
+                message['icon_emoji'] = emoji
+            if not username == None and not username == "":
+                message['username'] = username
+            
+            p = urlparse(url)
+            con = httplib.HTTPSConnection(p.netloc)
+            con.request("POST", p.path, json.dumps(message))
+            
+            return ""
+        except:
+            return "Something has gone horribly wrong."
 
 def configure_routes(script_name=''):
     cherrypy.config.update('gdg.conf')
