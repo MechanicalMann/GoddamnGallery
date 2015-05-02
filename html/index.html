@@ -2,7 +2,7 @@
 <h1 class="text-center">${title}</h1>
 
     <ol class="breadcrumb">
-    % if gallery == "":
+    % if gallery == "" and not parent_gallery == "":
         <li class="active">Home</li>
     % else:
         <li><a href="${baseurl}">Home</a></li>
