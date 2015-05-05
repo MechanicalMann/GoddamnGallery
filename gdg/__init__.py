@@ -157,6 +157,7 @@ class ApiController(object):
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def search(self, q=""):
+        cherrypy.log("Executing search for \"{}\"".format(q))
         return { "query" : q, "results" : find_image(q) }
     
     @cherrypy.expose
@@ -177,6 +178,8 @@ class ApiController(object):
             return "You haven't configured the goddamn web hook."
         
         try:
+            cherrypy.log("User {} ({}) in channel {} ({}) requests image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], result[0]))
+
             message = { "text": "<{}>".format(result[0]), "channel": kwargs['channel_id'] }
             
             icon = cherrypy.request.app.config['slack']['icon_url']
@@ -196,6 +199,7 @@ class ApiController(object):
             
             return ""
         except:
+            cherrypy.log("An error occurred while attempting to send an image to Slack.", traceback=True)
             return "Something has gone horribly wrong."
 
 def configure_routes(script_name=''):
