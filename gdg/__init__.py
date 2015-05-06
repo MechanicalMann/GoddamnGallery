@@ -183,7 +183,11 @@ class ApiController(object):
         try:
             cherrypy.log("User {} ({}) in channel {} ({}) requests image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], result[0]))
 
-            message = { "text": "<{}>".format(result[0]), "channel": kwargs['channel_id'] }
+            message = { "channel": kwargs['channel_id'] }
+            
+            # Send the image as an attachment because it looks more like a real Slack integration
+            attachment = { "text": "<{}>".format(result[0]), "author_name": "<@{}>".format(kwargs['user_name']), "image_url": result[0], "fallback": result[0] }
+            message['attachments'] = [attachment]
             
             icon = cherrypy.request.app.config['slack']['icon_url']
             emoji = cherrypy.request.app.config['slack']['icon_emoji']
