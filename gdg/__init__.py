@@ -119,19 +119,19 @@ def find_image(name):
     dbpath = cherrypy.request.app.config['database']['path']
     
     ext = "\..{2,}$"
-    pattern = "[\\\/]" + re.escape(name)
+    pattern = re.escape(name)
     
     # If they include an extension in their search, search for their input exactly.
     # If they did not include an extension, search for images with any extension.
     if re.search(ext, name) == None:
         pattern += ext
     else:
-        pattern += "$"
+        pattern = "[\\\/]" + pattern + "$"
     
     print("Regex: " + pattern)
     
     with GoddamnDatabase(dbpath):
-        return [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern))]
+        return [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
 
 class GalleryController(object):
     @cherrypy.expose
