@@ -211,9 +211,6 @@ class ApiController(object):
         result = find_image(text)
         if len(result) == 0:
             return "No images were found that matched \"{}.\"".format(text)
-        elif len(result) > 1:
-            baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/' + cherrypy.request.app.config['images']['path'] + '/')
-            return "Multiple images matched your query \"{}\": \n\n{}\n\nPlease enter the specific filename of the image you want.".format(text, "\n".join([r.replace(baseurl, '') for r in result]))
             
         url = cherrypy.request.app.config['slack']['webhook_url']
         if url == None or url == '':
