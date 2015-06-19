@@ -111,7 +111,30 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         model['children'] = [i.gallery for i in Image.select().group_by(Image.gallery).having(Image.parent == gallery)]
         
     return model
+
+# Levenshtein Distance implementation by Magnus Lie Hetland
+# http://hetland.org/coding/python/levenshtein.py
+def levenshtein(a, b):
+    m, n = len(a), len(b)
+    if m > n:
+        a, b = b, a
+        m, n = n, m
     
+    current = range(m + 1)
+    for i in range(1, n + 1):
+        previous, current = current, [i] + [0] * m
+        for j in range(1, m + 1):
+            add, delete = previous[j] + 1, current[j - 1] + 1
+            change = previous[j - 1]
+            if not a[j - 1] == b[i - 1]:
+                change = change + 1
+            current[j] = min(add, delete, change)
+    return current[m]
+
+ext = "\..{2,}$"
+extension = re.compile(ext)
+spaces = re.compile("[\\\]*\s+")
+
 def find_image(name):
     if name == None or name == "":
         return [];
@@ -119,20 +142,26 @@ def find_image(name):
     baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
     dbpath = cherrypy.request.app.config['database']['path']
     
-    ext = "\..{2,}$"
-    pattern = "[\\\/]" + re.escape(name)
+    pattern = re.escape(name)
+    pattern = spaces.sub("[\s\-_\.]*", pattern)
     
     # If they include an extension in their search, search for their input exactly.
     # If they did not include an extension, search for images with any extension.
-    if re.search(ext, name) == None:
-        pattern += ext
+    # This is mostly to prevent people from entering "jpg" and getting everything.
+    if extension.search(name) == None:
+        pattern += ".*" + ext
     else:
         pattern += "$"
     
     print("Regex: " + pattern)
     
     with GoddamnDatabase(dbpath):
-        return [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
+        images = [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
+    
+    if len(images) > 1:
+        images.sort(key=lambda x: levenshtein(name, x))
+    
+    return images
 
 class GalleryController(object):
     @cherrypy.expose
