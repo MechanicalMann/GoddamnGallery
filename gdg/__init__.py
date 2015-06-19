@@ -101,9 +101,10 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         
         q = q.order_by(Image.path)
         
-        model['total_pages'] = int((count - 1) / page_size) + 1
-        model['page'] = page
-        q = q.paginate(page, page_size)
+        if not page_size == None:
+            model['total_pages'] = int((count - 1) / page_size) + 1
+            model['page'] = page
+            q = q.paginate(page, page_size)
         
         model['images'] = [get_model(i) for i in q]
 
@@ -119,14 +120,14 @@ def find_image(name):
     dbpath = cherrypy.request.app.config['database']['path']
     
     ext = "\..{2,}$"
-    pattern = re.escape(name)
+    pattern = "[\\\/]" + re.escape(name)
     
     # If they include an extension in their search, search for their input exactly.
     # If they did not include an extension, search for images with any extension.
     if re.search(ext, name) == None:
         pattern += ext
     else:
-        pattern = "[\\\/]" + pattern + "$"
+        pattern += "$"
     
     print("Regex: " + pattern)
     
@@ -159,6 +160,15 @@ class ApiController(object):
     def search(self, q=""):
         cherrypy.log("Executing search for \"{}\"".format(q))
         return { "query" : q, "results" : find_image(q) }
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def list(self, gallery=""):
+        model = get_viewmodel()
+        dbpath = cherrypy.request.app.config['database']['path']
+        get_images(dbpath, model, page=1, page_size=None, gallery=gallery)
+        model['images'] = [i.__dict__ for i in model['images']] # ImageModel is not JSON-serializable, apparently?
+        return model
     
     @cherrypy.expose
     def slack(self, **kwargs):
@@ -174,7 +184,7 @@ class ApiController(object):
             return "No images were found that matched \"{}.\"".format(text)
         elif len(result) > 1:
             baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/' + cherrypy.request.app.config['images']['path'] + '/')
-            return "Multiple images matched your query \"{}\": {}\n\nPlease enter the specific filename of the image you want.".format(text, ", ".join([r.replace(baseurl, '') for r in result]))
+            return "Multiple images matched your query \"{}\": \n\n{}\n\nPlease enter the specific filename of the image you want.".format(text, "\n".join([r.replace(baseurl, '') for r in result]))
             
         url = cherrypy.request.app.config['slack']['webhook_url']
         if url == None or url == '':
