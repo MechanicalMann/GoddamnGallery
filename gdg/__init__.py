@@ -134,6 +134,14 @@ def levenshtein(a, b):
 ext = "\..{2,}$"
 extension = re.compile(ext)
 spaces = re.compile("[\\\]*\s+")
+filename = re.compile("/([^\\/]+)" + ext)
+
+def filename_lev(a, f):
+    fn = filename.search(f)
+    if fn == None:
+        return levenshtein(a, f)
+    else:
+        return levenshtein(a, fn.group(1))
 
 def find_image(name):
     if name == None or name == "":
@@ -159,7 +167,7 @@ def find_image(name):
         images = [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
     
     if len(images) > 1:
-        images.sort(key=lambda x: levenshtein(name, x))
+        images.sort(key=lambda x: filename_lev(name, x))
     
     return images
 
