@@ -203,9 +203,17 @@ class ApiController(object):
     def list(self, gallery=""):
         model = get_viewmodel()
         dbpath = cherrypy.request.app.config['database']['path']
-        get_images(dbpath, model, page=1, page_size=None, gallery=gallery)
-        model['images'] = [i.__dict__ for i in model['images']] # ImageModel is not JSON-serializable, apparently?
-        return model
+        baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+        result = {}
+        with GoddamnDatabase(dbpath):
+            images = Image.select()
+            if not gallery == "" and not gallery == None:
+                images = images.where(Image.gallery == gallery)
+                result["gallery"] = gallery
+                
+            images = images.order_by(SQL('path collate nocase'))
+            result["images"] = [get_relative_path(baseurl, i.path) for i in images]
+        return result
     
     @cherrypy.expose
     def slack(self, **kwargs):
@@ -257,6 +265,7 @@ def configure_routes(script_name=''):
     cherrypy.config.update('gdg.conf')
 
     dispatch = cherrypy.dispatch.RoutesDispatcher()
+    dispatch.connect("api", "/api/list/{gallery:.*}", ApiController(), action='list')
     dispatch.connect("api", "/api/{action}/{id}", ApiController())
     dispatch.connect("api", "/api/{action}", ApiController())
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
