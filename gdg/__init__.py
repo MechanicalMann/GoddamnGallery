@@ -131,7 +131,7 @@ def levenshtein(a, b):
             current[j] = min(add, delete, change)
     return current[m]
 
-ext = "\..{2,}$"
+ext = "\.\w{2,}$"
 extension = re.compile(ext)
 spaces = re.compile("[\\\]*\s+")
 filename = re.compile("/([^\\/]+)" + ext)
