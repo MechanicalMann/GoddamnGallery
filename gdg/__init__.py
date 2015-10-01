@@ -161,8 +161,6 @@ def find_image(name):
     else:
         pattern += "$"
     
-    print("Regex: " + pattern)
-    
     with GoddamnDatabase(dbpath):
         images = [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
     
