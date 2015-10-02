@@ -134,6 +134,7 @@ def levenshtein(a, b):
 ext = "\.\w{2,}$"
 extension = re.compile(ext)
 spaces = re.compile("[\\\]*\s+")
+symbols = re.compile("([^\w\s\.]+)")
 filename = re.compile("/([^\\/]+)" + ext)
 
 def filename_lev(a, f):
@@ -150,8 +151,8 @@ def find_image(name):
     baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
     dbpath = cherrypy.request.app.config['database']['path']
     
-    pattern = re.escape(name)
-    pattern = spaces.sub("[\s\-_\.]*", pattern)
+    pattern = symbols.sub("[\W_]*?", name)
+    pattern = spaces.sub("[\s\-_\.]*?", pattern)
     
     # If they include an extension in their search, search for their input exactly.
     # If they did not include an extension, search for images with any extension.
