@@ -165,7 +165,7 @@ def find_image(name):
         images = [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
     
     if len(images) > 1:
-        images.sort(key=lambda x: filename_lev(name, x))
+        images.sort(key=lambda x: filename_lev(name.lower(), x.lower()))
     
     return images
 
