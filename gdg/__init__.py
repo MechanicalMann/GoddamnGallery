@@ -144,16 +144,16 @@ def filename_lev(a, f):
     else:
         return levenshtein(a, fn.group(1))
 
-# Returns a list of tuples of (filename, lev_dist)
+# Returns a list of key-value pairs {image, distance}
 def filter_images_by_lev(name, image_list, max_dist):
     if max_dist == -1:
-        return map(lambda x: (x,0), name)
+        return map(lambda x: { 'image': x, 'distance': 0 }, image_list)
 
     for filename in image_list:
         lev_dist = filename_lev(name.lower(), filename.lower())
         if lev_dist > max_dist:
             continue
-        yield filename, lev_dist
+        yield { 'image': filename, 'distance': lev_dist }
 
 def find_image(name):
     if name == None or name == "":
@@ -185,8 +185,8 @@ def find_image(name):
 
         # Filter and then sort the images by their levenshtein distance
         filtered_images = filter_images_by_lev(name, images, max_dist)
-        filtered_images.sort(key=lambda tup: tup[1])
-        images = [i for i,d in filtered_images]
+        filtered_images.sort(key=lambda kvp: kvp['distance'])
+        images = [kvp['distance'] for kvp in filtered_images]
     
     return images
 
