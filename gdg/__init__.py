@@ -147,7 +147,7 @@ def filename_lev(a, f):
 # Returns a list of key-value pairs {image, distance}
 def filter_images_by_lev(name, image_list, max_dist):
     if max_dist == -1:
-        return map(lambda x: { 'image': x, 'distance': 0 }, image_list)
+        yield return map(lambda x: { 'image': x, 'distance': 0 }, image_list)
 
     for filename in image_list:
         lev_dist = filename_lev(name.lower(), filename.lower())
