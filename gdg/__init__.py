@@ -148,7 +148,7 @@ def filename_lev(a, f):
 def filter_images_by_lev(name, image_list, max_dist):
     for filename in image_list:
         lev_dist = 0 if max_dist < 0 else filename_lev(name.lower(), filename.lower())
-        if lev_dist > max_dist:
+        if max_dist >= 0 and lev_dist > max_dist:
             continue
         yield { 'image': filename, 'distance': lev_dist }
 
@@ -181,9 +181,8 @@ def find_image(name):
         max_dist = -1 if max_dist is None else max_dist
 
         # Filter and then sort the images by their levenshtein distance
-        filtered_images = filter_images_by_lev(name, images, max_dist)
-        filtered_images.sort(key=lambda kvp: kvp['distance'])
-        images = [kvp['distance'] for kvp in filtered_images]
+        filtered_images = sorted(filter_images_by_lev(name, images, max_dist), key=lambda kvp: kvp['distance'])
+        images = [kvp['image'] for kvp in filtered_images]
     
     return images
 
