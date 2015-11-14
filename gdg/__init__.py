@@ -144,6 +144,14 @@ def filename_lev(a, f):
     else:
         return levenshtein(a, fn.group(1))
 
+# Returns a list of key-value pairs {image, distance}
+def filter_images_by_lev(name, image_list, max_dist):
+    for filename in image_list:
+        lev_dist = 0 if max_dist < 0 else filename_lev(name.lower(), filename.lower())
+        if max_dist >= 0 and lev_dist > max_dist:
+            continue
+        yield { 'image': filename, 'distance': lev_dist }
+
 def find_image(name):
     if name == None or name == "":
         return [];
@@ -166,7 +174,15 @@ def find_image(name):
         images = [get_relative_path(baseurl, i.path) for i in Image.select().where(Image.path.regexp(pattern)).order_by(SQL('path collate nocase'))]
     
     if len(images) > 1:
-        images.sort(key=lambda x: filename_lev(name.lower(), x.lower()))
+        if not 'api' in cherrypy.request.app.config:
+            return "You haven't configured the goddamn API."
+
+        max_dist = cherrypy.request.app.config['api']['max_lev_distance']
+        max_dist = -1 if max_dist is None else max_dist
+
+        # Filter and then sort the images by their levenshtein distance
+        filtered_images = sorted(filter_images_by_lev(name, images, max_dist), key=lambda kvp: kvp['distance'])
+        images = [kvp['image'] for kvp in filtered_images]
     
     return images
 
