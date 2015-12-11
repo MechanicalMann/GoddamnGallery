@@ -112,9 +112,12 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         
     return model
 
-def get_image_details(dbpath, p):
+def get_image_details(p):
     if p == None or p == "":
         return None
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name)
+    p = p.replace(baseurl, current_dir)
+    dbpath = cherrypy.request.app.config['database']['path']
     with GoddamnDatabase(dbpath):
         return get_model(Image.get(Image.path == p))
 
@@ -257,9 +260,10 @@ class ApiController(object):
             cherrypy.log("User {} ({}) in channel {} ({}) requests {}, returned image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], text, result[0]))
 
             message = { "channel": kwargs['channel_id'] }
+            details = get_image_details(result[0])
             
             # Send the image as an attachment because it looks more like a real Slack integration
-            attachment = { "image_url": result[0], "fallback": result[0], "text": "*<@{}>*: `{}`\n{}".format(kwargs['user_name'], text, result[0]), "mrkdwn_in": ["text"] }
+            attachment = { "image_url": result[0], "fallback": result[0], "text": "*<@{}>*: `{}`\n{}".format(kwargs['user_name'], text, result[0]), "mrkdwn_in": ["text"], "color": details.average_color }
             message['attachments'] = [attachment]
             
             icon = cherrypy.request.app.config['slack']['icon_url']
