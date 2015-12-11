@@ -112,6 +112,12 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
         
     return model
 
+def get_image_details(dbpath, p):
+    if p == None or p == "":
+        return None
+    with GoddamnDatabase(dbpath):
+        return get_model(Image.get(Image.path == p))
+
 # Levenshtein Distance implementation by Magnus Lie Hetland
 # http://hetland.org/coding/python/levenshtein.py
 def levenshtein(a, b):
@@ -248,12 +254,12 @@ class ApiController(object):
             return "You haven't configured the goddamn web hook."
         
         try:
-            cherrypy.log("User {} ({}) in channel {} ({}) requests image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], result[0]))
+            cherrypy.log("User {} ({}) in channel {} ({}) requests {}, returned image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], text, result[0]))
 
             message = { "channel": kwargs['channel_id'] }
             
             # Send the image as an attachment because it looks more like a real Slack integration
-            attachment = { "text": "<{}>".format(result[0]), "author_name": "<@{}>".format(kwargs['user_name']), "image_url": result[0], "fallback": result[0] }
+            attachment = { "image_url": result[0], "fallback": result[0], "text": "*<@{}>*: `{}`\n{}".format(kwargs['user_name'], text, result[0]), "mrkdwn_in": ["text"] }
             message['attachments'] = [attachment]
             
             icon = cherrypy.request.app.config['slack']['icon_url']
