@@ -268,7 +268,32 @@ class ApiController(object):
             images = images.order_by(SQL('path collate nocase'))
             result["images"] = [get_relative_path(baseurl, i.path) for i in images]
         return result
-    
+
+    @cherrypy.expose
+    @cherrypy.tools.allow(methods=['PUT', 'POST'])
+    def tag(self, **kwargs):
+        tag_name = kwargs.get('tag', '')
+        if not tag_name:
+            return "You need to specify a tag name."
+        file_path = kwargs.get('file', '')
+        if not file:
+            return "You need to specify a file to tag"
+        full_path = os.path.join(current_dir, 'images', file_path)
+
+        dbpath = cherrypy.request.app.config['database']['path']
+        with GoddamnDatabase(dbpath) as db:
+            with db.transaction():
+                images = Image.select().where(Image.path == full_path)
+                if len(images) == 0:
+                    return "Image \"{}\" does not exist".format(file_path)
+                image = images[0]
+                tag, _ = Tag.get_or_create(name=tag_name, slug=tag_name)
+                _, created = TagImage.get_or_create(image=image, tag=tag)
+                if created:
+                    return "Image has been successfully tagged"
+                else:
+                    return "Image was already tagged"
+
     @cherrypy.expose
     def slack(self, **kwargs):
         if not 'slack' in cherrypy.request.app.config:
