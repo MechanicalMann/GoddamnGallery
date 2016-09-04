@@ -29,6 +29,13 @@ class Tag(BaseModel):
     class Meta:
         db_table = 'tags'
 
+class TagImage(BaseModel):
+    tag = ForeignKeyField(Tag)
+    image = ForeignKeyField(Image)
+
+    class Meta:
+        db_table = 'tag_image'
+
 class GoddamnDatabase(object):
     def __init__(self, path, **connect_args):
         if path == None:

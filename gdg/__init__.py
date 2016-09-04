@@ -1,4 +1,5 @@
 import os
+import random
 import re
 import httplib
 import json
@@ -161,7 +162,7 @@ def filter_images_by_lev(name, image_list, max_dist):
             continue
         yield { 'image': filename, 'distance': lev_dist }
 
-def find_image(name):
+def find_images_by_name(name):
     if name == None or name == "":
         return [];
         
@@ -195,6 +196,30 @@ def find_image(name):
     
     return images
 
+
+def find_images_by_tags(tags):
+    if tags is None or tags == []:
+        return []
+
+    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    dbpath = cherrypy.request.app.config['database']['path']
+
+    with GoddamnDatabase(dbpath):
+        return [get_relative_path(baseurl, i.path) for i in Image.select().join(TagImage).join(Tag).where(Tag.name << tags)]
+
+
+def find_image(text):
+    if not text:
+        return None
+    if text.startswith('#'):
+        tags = [tag.strip() for tag in text.split('#') if tag and not tag.isspace()]
+        images = find_images_by_tags(tags)
+        return random.choice(images) if len(images) else None
+    else:
+        images = find_images_by_name(text)
+        return images[0] if len(images) else None
+
+
 class GalleryController(object):
     @cherrypy.expose
     def index(self, gallery="", page="1"):
@@ -220,7 +245,7 @@ class ApiController(object):
     @cherrypy.tools.json_out()
     def search(self, q=""):
         cherrypy.log("Executing search for \"{}\"".format(q))
-        return { "query" : q, "results" : find_image(q) }
+        return { "query" : q, "results" : find_images_by_name(q) }
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -248,8 +273,8 @@ class ApiController(object):
         if text == None or text == '':
             return "You need to enter an image name to search for."
             
-        result = find_image(text)
-        if len(result) == 0:
+        image = find_image(text)
+        if image is None:
             return "No images were found that matched \"{}.\"".format(text)
             
         url = cherrypy.request.app.config['slack']['webhook_url']
@@ -260,10 +285,10 @@ class ApiController(object):
             cherrypy.log("User {} ({}) in channel {} ({}) requests {}, returned image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], text, result[0]))
 
             message = { "channel": kwargs['channel_id'] }
-            details = get_image_details(result[0])
+            details = get_image_details(image)
             
             # Send the image as an attachment because it looks more like a real Slack integration
-            attachment = { "image_url": result[0], "fallback": result[0], "text": "*<@{}>*: `{}`\n{}".format(kwargs['user_name'], text, result[0]), "mrkdwn_in": ["text"], "color": details.average_color }
+            attachment = { "image_url": image, "fallback": image, "text": "*<@{}>*: `{}`\n{}".format(kwargs['user_name'], text, image), "mrkdwn_in": ["text"], "color": details.average_color }
             message['attachments'] = [attachment]
             
             icon = cherrypy.request.app.config['slack']['icon_url']
