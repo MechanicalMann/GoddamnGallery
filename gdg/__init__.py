@@ -287,7 +287,7 @@ class ApiController(object):
             return "You haven't configured the goddamn web hook."
         
         try:
-            cherrypy.log("User {} ({}) in channel {} ({}) requests {}, returned image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], text, result[0]))
+            cherrypy.log("User {} ({}) in channel {} ({}) requests {}, returned image {}".format(kwargs['user_name'], kwargs['team_domain'], kwargs['channel_name'], kwargs['channel_id'], text, image))
 
             message = { "channel": kwargs['channel_id'] }
             details = get_image_details(image)
