@@ -220,6 +220,14 @@ def find_image(text):
         return images[0] if len(images) else None
 
 
+def verify_key(key):
+    # TODO not this
+    real_key = cherrypy.request.app.config['api'].get('key', None)
+    if not real_key:
+        return True
+    return real_key == key
+
+
 class GalleryController(object):
     @cherrypy.expose
     def index(self, gallery="", page="1"):
@@ -272,6 +280,8 @@ class ApiController(object):
     @cherrypy.expose
     @cherrypy.tools.allow(methods=['PUT', 'POST'])
     def tag(self, **kwargs):
+        if not verify_key(kwargs.get('key', '')):
+            return "What's the magic word?"
         tag_name = kwargs.get('tag', '')
         if not tag_name:
             return "You need to specify a tag name."
