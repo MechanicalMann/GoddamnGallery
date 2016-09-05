@@ -288,7 +288,8 @@ class ApiController(object):
         file_path = kwargs.get('file', '')
         if not file:
             return "You need to specify a file to tag"
-        full_path = os.path.join(current_dir, 'images', file_path)
+        image_folder = cherrypy.request.app.config['images']['path']
+        full_path = os.path.join(current_dir, image_folder, file_path)
 
         dbpath = cherrypy.request.app.config['database']['path']
         with GoddamnDatabase(dbpath) as db:
