@@ -294,7 +294,7 @@ class ApiController(object):
         dbpath = cherrypy.request.app.config['database']['path']
         with GoddamnDatabase(dbpath) as db:
             with db.transaction():
-                images = Image.select().where(Image.path == full_path)
+                images = list(Image.select().where(Image.path == full_path))
                 if len(images) == 0:
                     return "Image \"{}\" does not exist".format(file_path)
                 image = images[0]
