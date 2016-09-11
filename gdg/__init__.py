@@ -50,6 +50,8 @@ def get_model(img):
         grey = 255
 
     baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+
+    tags = [t.name for t in [ti.tag for ti in img.tagimage_set_prefetch]] if hasattr(img, 'tagimage_set_prefetch') else []
     
     model = {
         'path': get_relative_path(baseurl, img.path),
@@ -59,7 +61,8 @@ def get_model(img):
         'size_x': img.x,
         'size_y': img.y,
         'filesize': size,
-        'grey': grey
+        'grey': grey,
+        'tags': tags
     }
     
     return ImageModel(**model)
@@ -67,7 +70,7 @@ def get_model(img):
 def get_viewmodel():
     return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'baseurl': '', 'gallery_url': '', 'gallery': '', 'parent_gallery': '', 'children': [] }
 
-def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
+def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
     if model == None:
         model = get_viewmodel()
 
@@ -94,6 +97,12 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
     with GoddamnDatabase(dbpath):
         q = Image.select().where(Image.gallery == gallery)
         
+        if not tag == "":
+            model['tagged'] = tag
+            q = q.join(TagImage).join(Tag).where(Tag.name == tag)
+        else:
+            model['tagged'] = None
+        
         count = q.count()
         if count == 0:
             return model
@@ -106,8 +115,11 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery=""):
             model['total_pages'] = int((count - 1) / page_size) + 1
             model['page'] = page
             q = q.paginate(page, page_size)
+
+        tags = TagImage.select(TagImage, Tag).join(Tag)
+        image_tags = prefetch(q, tags)
         
-        model['images'] = [get_model(i) for i in q]
+        model['images'] = [get_model(i) for i in image_tags]
 
         model['children'] = [i.gallery for i in Image.select().group_by(Image.gallery).having(Image.parent == gallery)]
         
@@ -117,7 +129,7 @@ def get_image_details(p):
     if p == None or p == "":
         return None
     baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name)
-    p = p.replace(baseurl, current_dir)
+    p = os.path.normpath(p.replace(baseurl, current_dir))
     dbpath = cherrypy.request.app.config['database']['path']
     with GoddamnDatabase(dbpath):
         return get_model(Image.get(Image.path == p))
@@ -230,7 +242,7 @@ def verify_key(key):
 
 class GalleryController(object):
     @cherrypy.expose
-    def index(self, gallery="", page="1"):
+    def index(self, gallery="", page="1", **kwargs):
         tmp = templates.get_template("index.html")
         model = get_viewmodel()
         
@@ -242,8 +254,9 @@ class GalleryController(object):
         else:
             model['title'] = 'Some Images'
             pagesize = cherrypy.request.app.config['gallery']['images_per_page']
+            tag = kwargs['tagged'] if 'tagged' in kwargs else ""
             
-            get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery)
+            get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery, tag=tag)
         
         model['urljoin'] = urljoin
         return tmp.render(**model)

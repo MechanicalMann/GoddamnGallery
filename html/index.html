@@ -75,6 +75,16 @@
             <p class="image-url">
                 <a href="${i.path}" class="lead">${i.file}</a>
             </p>
+
+            % if i.tags and len(i.tags) > 0:
+            <ul class="list-inline text-center">
+                % for t in i.tags:
+                <li class="small">
+                    <a href="${gallery_url}?tagged=${t}" class="label label-default">${t}</a>
+                </li>
+                % endfor
+            </ul>
+            %endif
             
         </li>
     % endfor
@@ -82,20 +92,23 @@
     <div style="clear: both;"></div>
     % if total_pages > 1:
     <p class="text-center">
+        <%
+        tagpart = "?tagged={}".format(tagged) if not tagged == None else ""
+        %>
         % if page > 1:
-        <a href="${gallery_url}">|&lt;</a>
+        <a href="${gallery_url}${tagpart}">|&lt;</a>
         % endif
         % if page == 2:
-        <a href="${gallery_url}">&lt;</a>
+        <a href="${gallery_url}${tagpart}">&lt;</a>
         % elif page > 2:
-        <a href="${urljoin(gallery_url, 'page/%s' % str(page - 1))}">&lt;</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(page - 1))}${tagpart}">&lt;</a>
         % endif
         
         Page ${page} of ${total_pages}
         
         % if page < total_pages:
-        <a href="${urljoin(gallery_url, 'page/%s' % str(page + 1))}">&gt;</a>
-        <a href="${urljoin(gallery_url, 'page/%s' % str(total_pages))}">&gt;|</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(page + 1))}${tagpart}">&gt;</a>
+        <a href="${urljoin(gallery_url, 'page/%s' % str(total_pages))}${tagpart}">&gt;|</a>
         % endif
     </p>
     % endif
