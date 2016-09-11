@@ -256,7 +256,7 @@ class ApiController(object):
             t = t.replace('+', ' ')
             cherrypy.log("Executing search for tags \"{}\"".format(t))
             tags = [tag.strip() for tag in t.split(' ') if tag and not tag.isspace()]
-            return { "query" : t, "results" : find_images_by_tags(tags) }
+            return { "tags" : t, "results" : find_images_by_tags(tags) }
         cherrypy.log("Executing search for \"{}\"".format(q))
         return { "query" : q, "results" : find_images_by_name(q) }
 
