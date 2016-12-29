@@ -36,6 +36,14 @@ class TagImage(BaseModel):
     class Meta:
         db_table = 'tag_image'
 
+class User(BaseModel):
+    name = CharField(unique=True)
+    email = CharField()
+    hash = CharField()
+
+    class Meta:
+        db_table = "users"
+
 class GoddamnDatabase(object):
     def __init__(self, path, **connect_args):
         if path == None:

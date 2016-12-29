@@ -31,6 +31,15 @@ CREATE TABLE tag_image (
                      REFERENCES tags ( id ) ON DELETE CASCADE 
 );
 
+-- Table: users
+CREATE TABLE users (
+    id    INTEGER PRIMARY KEY,
+    name  VARCHAR( 128 ) NOT NULL
+                        UNIQUE,
+    email VARCHAR( 512 ) NOT NULL,
+    hash  VARCHAR( 128 ) NOT NULL
+)
+
 -- View: images_by_tag
 CREATE VIEW images_by_tag AS
        SELECT t.name AS tag_name,

@@ -12,5 +12,6 @@ Requirements
 - [Mako](http://www.makotemplates.org/)
 - [Pillow](http://python-imaging.github.io/)
 - [Routes](https://github.com/bbangert/routes)
+- [bcrypt](https://github.com/pyca/bcrypt/)
 
 All of these (except Python itself) can and probably should be installed via `pip`

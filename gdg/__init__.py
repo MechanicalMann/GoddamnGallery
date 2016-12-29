@@ -5,6 +5,7 @@ import httplib
 import json
 import cherrypy
 import gdg
+import bcrypt
 from urlparse import urljoin, urlparse
 from mako.template import Template
 from mako.lookup import TemplateLookup
@@ -205,9 +206,7 @@ def find_images_by_name(name):
         # Filter and then sort the images by their levenshtein distance
         filtered_images = sorted(filter_images_by_lev(name, images, max_dist), key=lambda kvp: kvp['distance'])
         images = [kvp['image'] for kvp in filtered_images]
-    
     return images
-
 
 def find_images_by_tags(tags):
     if tags is None or tags == []:
@@ -218,7 +217,6 @@ def find_images_by_tags(tags):
 
     with GoddamnDatabase(dbpath):
         return [get_relative_path(baseurl, i.path) for i in Image.select().join(TagImage).join(Tag).where(Tag.name << tags)]
-
 
 def find_image(text):
     if not text:
@@ -231,7 +229,6 @@ def find_image(text):
         images = find_images_by_name(text)
         return images[0] if len(images) else None
 
-
 def verify_key(key):
     # TODO not this
     real_key = cherrypy.request.app.config['api'].get('key', None)
@@ -239,6 +236,13 @@ def verify_key(key):
         return True
     return real_key == key
 
+def set_user_info(model):
+    if 'user' in cherrypy.session:
+        model['logged_in'] = True
+        model['user'] = cherrypy.session['user']
+    else:
+        model['logged_in'] = False
+        model['user'] = None
 
 class GalleryController(object):
     @cherrypy.expose
@@ -259,7 +263,48 @@ class GalleryController(object):
             get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery, tag=tag)
         
         model['urljoin'] = urljoin
+        set_user_info(model)
         return tmp.render(**model)
+
+class AccountController(object):
+    def show_login(self, error=False):
+        tmp = templates.get_template("login.html")
+        model = { "title": "Sign in", "error": error }
+        set_user_info(model)
+        return tmp.render(**model)
+
+    @cherrypy.expose
+    def index(self):
+        if 'user' not in cherrypy.session:
+            self.show_login()
+        raise cherrypy.HTTPRedirect("/")
+    
+    @cherrypy.expose
+    def login(self):
+        return self.show_login()
+    
+    @cherrypy.expose
+    @cherrypy.tools.allow(methods=['POST'])
+    def handle_login(self, username="", password=""):
+        dbpath = cherrypy.request.app.config['database']['path']
+        try:
+            with GoddamnDatabase(dbpath):
+                user = User.get(User.name == username)
+                p = bcrypt.hashpw(password.encode('utf-8'), user.hash.encode('utf-8')) #bcrypt is very particular about string encodings
+                if p == user.hash:
+                    cherrypy.session['user'] = { 'name': user.name, 'email': user.email }
+                    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+                    raise cherrypy.HTTPRedirect(baseurl)
+        except cherrypy.HTTPRedirect:
+            raise
+        except:
+            pass # Swallow all exceptions
+        return self.show_login(True)
+    
+    def logout(self):
+        cherrypy.session.pop('user', None)
+        baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+        raise cherrypy.HTTPRedirect(baseurl)
 
 class ApiController(object):
     @cherrypy.expose
@@ -366,12 +411,15 @@ class ApiController(object):
             return "Something has gone horribly wrong."
 
 def configure_routes(script_name=''):
+    global application
     cherrypy.config.update('gdg.conf')
 
     dispatch = cherrypy.dispatch.RoutesDispatcher()
     dispatch.connect("api", "/api/list/{gallery:.*}", ApiController(), action='list')
     dispatch.connect("api", "/api/{action}/{id}", ApiController())
     dispatch.connect("api", "/api/{action}", ApiController())
+    dispatch.connect("account", "/account/login", AccountController(), action='handle_login', conditions=dict(method=["POST"]))
+    dispatch.connect("account", "/account/{action}", AccountController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
@@ -381,6 +429,7 @@ def configure_routes(script_name=''):
 
 def main():
     configure_routes()
+    cherrypy.log("Using database at {}".format(os.path.join(application.config['database']['path'], "gallery.db")))
     cherrypy.engine.start()
     cherrypy.engine.block()
 
