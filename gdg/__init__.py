@@ -36,6 +36,9 @@ def filesize(num):
         num /= 1024.0
     return "%3.1f%s" % (num, 'TB')
 
+def get_base_url():
+    return urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+
 def get_model(img):
     p = os.path.abspath(img.path)
     if not os.path.exists(p):
@@ -50,7 +53,7 @@ def get_model(img):
         color = "#FFFFFF"
         grey = 255
 
-    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    baseurl = get_base_url()
 
     tags = [t.name for t in [ti.tag for ti in img.tagimage_set_prefetch]] if hasattr(img, 'tagimage_set_prefetch') else []
     
@@ -69,7 +72,7 @@ def get_model(img):
     return ImageModel(**model)
     
 def get_viewmodel():
-    return { 'title': '', 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'baseurl': '', 'gallery_url': '', 'gallery': '', 'parent_gallery': '', 'children': [] }
+    return { 'message': '', 'images': [], 'page': 1, 'total_images': 0, 'total_pages': 1, 'gallery_url': '', 'gallery': '', 'parent_gallery': '', 'children': [] }
 
 def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
     if model == None:
@@ -78,7 +81,7 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
     while gallery.startswith('/'): gallery = gallery[1:]
     while gallery.endswith('/'): gallery = gallery[:-1]
 
-    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    baseurl = get_base_url()
     model['gallery'] = gallery
 
     if not gallery == "":
@@ -91,7 +94,6 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
     if not gallery_url.endswith('/'):
         gallery_url += '/'
 
-    model['baseurl'] = baseurl
     model['gallery_url'] = gallery_url
     model['parent_gallery'] = parent_gallery
     
@@ -129,8 +131,7 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
 def get_image_details(p):
     if p == None or p == "":
         return None
-    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name)
-    p = os.path.normpath(p.replace(baseurl, current_dir))
+    p = os.path.normpath(p.replace(get_base_url(), current_dir))
     dbpath = cherrypy.request.app.config['database']['path']
     with GoddamnDatabase(dbpath):
         return get_model(Image.get(Image.path == p))
@@ -177,9 +178,9 @@ def filter_images_by_lev(name, image_list, max_dist):
 
 def find_images_by_name(name):
     if name == None or name == "":
-        return [];
+        return []
         
-    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    baseurl = get_base_url()
     dbpath = cherrypy.request.app.config['database']['path']
     
     pattern = symbols.sub("[\W_]*?", name)
@@ -212,7 +213,7 @@ def find_images_by_tags(tags):
     if tags is None or tags == []:
         return []
 
-    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    baseurl = get_base_url()
     dbpath = cherrypy.request.app.config['database']['path']
 
     with GoddamnDatabase(dbpath):
@@ -244,10 +245,27 @@ def set_user_info(model):
         model['logged_in'] = False
         model['user'] = None
 
-class GalleryController(object):
+class BaseController(object):
+    def render_page(self, template, model=None):
+        tmp = templates.get_template(template)
+        baseurl = get_base_url()
+
+        base_model = { 'title': "Goddamn Gallery", 'baseurl': baseurl, 'urljoin': urljoin }
+
+        if 'user' in cherrypy.session:
+            base_model['logged_in'] = True
+            base_model['user'] = cherrypy.session['user']
+        else:
+            base_model['logged_in'] = False
+            base_model['user'] = None
+        
+        if model:
+            base_model.update(model)
+        return tmp.render(**base_model)
+
+class GalleryController(BaseController):
     @cherrypy.expose
     def index(self, gallery="", page="1", **kwargs):
-        tmp = templates.get_template("index.html")
         model = get_viewmodel()
         
         dbpath = cherrypy.request.app.config['database']['path']
@@ -262,16 +280,13 @@ class GalleryController(object):
             
             get_images(dbpath, model, page=int(page), page_size=pagesize, gallery=gallery, tag=tag)
         
-        model['urljoin'] = urljoin
-        set_user_info(model)
-        return tmp.render(**model)
+        return self.render_page("index.html", model)
 
-class AccountController(object):
+class AccountController(BaseController):
     def show_login(self, error=False):
         tmp = templates.get_template("login.html")
         model = { "title": "Sign in", "error": error }
-        set_user_info(model)
-        return tmp.render(**model)
+        return self.render_page("login.html", model)
 
     @cherrypy.expose
     def index(self):
@@ -293,7 +308,7 @@ class AccountController(object):
                 p = bcrypt.hashpw(password.encode('utf-8'), user.hash.encode('utf-8')) #bcrypt is very particular about string encodings
                 if p == user.hash:
                     cherrypy.session['user'] = { 'name': user.name, 'email': user.email }
-                    baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+                    baseurl = get_base_url()
                     raise cherrypy.HTTPRedirect(baseurl)
         except cherrypy.HTTPRedirect:
             raise
@@ -303,7 +318,7 @@ class AccountController(object):
     
     def logout(self):
         cherrypy.session.pop('user', None)
-        baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+        baseurl = get_base_url()
         raise cherrypy.HTTPRedirect(baseurl)
 
 class ApiController(object):
@@ -323,7 +338,7 @@ class ApiController(object):
     def list(self, gallery=""):
         model = get_viewmodel()
         dbpath = cherrypy.request.app.config['database']['path']
-        baseurl = urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+        baseurl = get_base_url()
         result = {}
         with GoddamnDatabase(dbpath):
             images = Image.select()
