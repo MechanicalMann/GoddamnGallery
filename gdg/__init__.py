@@ -13,6 +13,7 @@ from gdg.data import *
 
 # Content is relative to the base directory, not the module directory.
 current_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+virtual_dir = ''
 
 templates = TemplateLookup(directories=['html'], strict_undefined=True)
 
@@ -37,7 +38,7 @@ def filesize(num):
     return "%3.1f%s" % (num, 'TB')
 
 def get_base_url():
-    return urljoin(cherrypy.request.base, cherrypy.request.script_name + '/')
+    return urljoin(cherrypy.request.base, virtual_dir + '/')
 
 def get_model(img):
     p = os.path.abspath(img.path)
@@ -304,7 +305,7 @@ class AccountController(BaseController):
         dbpath = cherrypy.request.app.config['database']['path']
         try:
             with GoddamnDatabase(dbpath):
-                user = User.get(User.name == username)
+                user = User.get(User.email == username)
                 p = bcrypt.hashpw(password.encode('utf-8'), user.hash.encode('utf-8')) #bcrypt is very particular about string encodings
                 if p == user.hash:
                     cherrypy.session['user'] = { 'name': user.name, 'email': user.email }
@@ -321,21 +322,93 @@ class AccountController(BaseController):
         baseurl = get_base_url()
         raise cherrypy.HTTPRedirect(baseurl)
 
-class ApiController(object):
-    @cherrypy.expose
-    @cherrypy.tools.json_out()
-    def search(self, q="", t=""):
-        if t != "":
-            t = t.replace('+', ' ')
-            cherrypy.log("Executing search for tags \"{}\"".format(t))
-            tags = [tag.strip() for tag in t.split(' ') if tag and not tag.isspace()]
-            return { "tags" : t, "results" : find_images_by_tags(tags) }
-        cherrypy.log("Executing search for \"{}\"".format(q))
-        return { "query" : q, "results" : find_images_by_name(q) }
+class TagController(object):
+    def __init__(self):
+        pass
+
+    def _cp_dispatch(self, vpath):
+        cherrypy.log("Dispatching from TagController")
+        if cherrypy.request.method == 'PUT' or cherrypy.request.method == 'POST':
+            return self.add_tag
+        return self
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def list(self, gallery=""):
+    def default(self, image=""):
+        cherrypy.log(cherrypy.request.method)
+        dbpath = cherrypy.request.app.config['database']['path']
+        if not image:
+            with GoddamnDatabase(dbpath):
+                return [t.slug for t in Tag.select()]
+        image_folder = cherrypy.request.app.config['images']['path']
+        full_path = os.path.join(current_dir, image_folder, image)
+        with GoddamnDatabase(dbpath):
+            return [t.slug for t in Tag.select().join(TagImage).join(Image).where(Image.path == full_path)]
+    
+    @cherrypy.expose
+    def add_tag(self, image="", **kwargs):
+        if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
+            raise cherrypy.HTTPError(401, "What's the magic word?")
+        tag_name = kwargs.get('tag', '')
+        if not tag_name:
+            raise cherrypy.HTTPError(400, "You need to specify a tag name.")
+        if not image:
+            raise cherrypy.HTTPError(400, "You need to specify an image to tag.")
+        image_folder = cherrypy.request.app.config['images']['path']
+        full_path = os.path.join(current_dir, image_folder, image)
+
+        dbpath = cherrypy.request.app.config['database']['path']
+        with GoddamnDatabase(dbpath) as db:
+            with db.transaction():
+                images = list(Image.select().where(Image.path == full_path))
+                if len(images) == 0:
+                    raise cherrypy.HTTPError(404, "Image \"{}\" does not exist".format(image))
+                image = images[0]
+                tag, _ = Tag.get_or_create(name=tag_name, slug=tag_name)
+                _, created = TagImage.get_or_create(image=image, tag=tag)
+                if created:
+                    return "Image has been successfully tagged"
+                else:
+                    return "Image was already tagged"
+
+class ImageController(object):
+    def __init__(self):
+        self.tags = TagController()
+    
+    def _cp_dispatch(self, vpath):
+        cherrypy.log("Dispatching from ImageController")
+        path = ""
+        while len(vpath) > 0:
+            segment = vpath.pop(0)
+            path = "/".join([path, segment])
+            if extension.search(segment):
+                break
+        if path.startswith('/'):
+            path = path[1:]
+        if extension.search(path):
+            cherrypy.request.params['image'] = path
+        
+            if len(vpath) > 0:
+                sub = vpath.pop(0)
+                if sub.lower() == 'tags':
+                    return self.tags._cp_dispatch(vpath) # The default dispatcher doesn't fall through from here for some reason
+            return self.details
+
+        cherrypy.request.params['gallery'] = path
+        return self
+    
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def details(self, image):
+        image_folder = cherrypy.request.app.config['images']['path']
+        full_path = os.path.join(current_dir, image_folder, image)
+        details = get_image_details(full_path).__dict__ # required for JSON serialization for some reason
+        details['tags'] = self.tags.default(image)
+        return details
+    
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def default(self, gallery=""):
         model = get_viewmodel()
         dbpath = cherrypy.request.app.config['database']['path']
         baseurl = get_base_url()
@@ -350,33 +423,33 @@ class ApiController(object):
             result["images"] = [get_relative_path(baseurl, i.path) for i in images]
         return result
 
-    @cherrypy.expose
-    @cherrypy.tools.allow(methods=['PUT', 'POST'])
-    def tag(self, **kwargs):
-        if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
-            return "What's the magic word?"
-        tag_name = kwargs.get('tag', '')
-        if not tag_name:
-            return "You need to specify a tag name."
-        file_path = kwargs.get('file', '')
-        if not file:
-            return "You need to specify a file to tag"
-        image_folder = cherrypy.request.app.config['images']['path']
-        full_path = os.path.join(current_dir, image_folder, file_path)
+class ApiController(object):
+    def __init__(self):
+        self.images = ImageController()
 
-        dbpath = cherrypy.request.app.config['database']['path']
-        with GoddamnDatabase(dbpath) as db:
-            with db.transaction():
-                images = list(Image.select().where(Image.path == full_path))
-                if len(images) == 0:
-                    return "Image \"{}\" does not exist".format(file_path)
-                image = images[0]
-                tag, _ = Tag.get_or_create(name=tag_name, slug=tag_name)
-                _, created = TagImage.get_or_create(image=image, tag=tag)
-                if created:
-                    return "Image has been successfully tagged"
-                else:
-                    return "Image was already tagged"
+    def _cp_dispatch(self, vpath):
+        cherrypy.log("Dispatching from ApiController: {}".format(str(vpath)))
+        if len(vpath) == 0:
+            return self
+        route = vpath[0].lower()
+        if route == 'images' or route == 'list':
+            vpath.pop(0) # /images/
+            return self.images
+        if route == 'tags':
+            vpath.pop(0) # /tags/
+            return self.images.tags
+        return self
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def search(self, q="", t=""):
+        if t != "":
+            t = t.replace('+', ' ')
+            cherrypy.log("Executing search for tags \"{}\"".format(t))
+            tags = [tag.strip() for tag in t.split(' ') if tag and not tag.isspace()]
+            return { "tags" : t, "results" : find_images_by_tags(tags) }
+        cherrypy.log("Executing search for \"{}\"".format(q))
+        return { "query" : q, "results" : find_images_by_name(q) }
 
     @cherrypy.expose
     def slack(self, **kwargs):
@@ -429,10 +502,14 @@ def configure_routes(script_name=''):
     global application
     cherrypy.config.update('gdg.conf')
 
+    api_config = { '/images': { 'tools.staticdir.on': False } } # disable the static image directory
+    api = cherrypy.tree.mount(ApiController(), '/api', config='gdg.conf')
+    api.merge(api_config)
+
     dispatch = cherrypy.dispatch.RoutesDispatcher()
-    dispatch.connect("api", "/api/list/{gallery:.*}", ApiController(), action='list')
-    dispatch.connect("api", "/api/{action}/{id}", ApiController())
-    dispatch.connect("api", "/api/{action}", ApiController())
+    # dispatch.connect("api", "/api/list/{gallery:.*}", ApiController(), action='list')
+    # dispatch.connect("api", "/api/{action}/{id}", ApiController())
+    # dispatch.connect("api", "/api/{action}", ApiController())
     dispatch.connect("account", "/account/login", AccountController(), action='handle_login', conditions=dict(method=["POST"]))
     dispatch.connect("account", "/account/{action}", AccountController(), action='index')
     dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
@@ -449,5 +526,7 @@ def main():
     cherrypy.engine.block()
 
 def wsgi(env, start_response, script_name=''):
+    global virtual_dir
+    virtual_dir = script_name
     configure_routes(script_name)
     return cherrypy.tree(env, start_response)

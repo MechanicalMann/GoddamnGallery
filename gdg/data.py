@@ -1,7 +1,7 @@
 import os
 from peewee import *
 
-database = SqliteDatabase(None, threadlocals=False)
+database = SqliteDatabase(None)
 
 class BaseModel(Model):
     class Meta:
