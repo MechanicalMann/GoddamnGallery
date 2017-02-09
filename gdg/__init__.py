@@ -353,7 +353,7 @@ class ApiController(object):
     @cherrypy.expose
     @cherrypy.tools.allow(methods=['PUT', 'POST'])
     def tag(self, **kwargs):
-        if not verify_key(kwargs.get('key', '')):
+        if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
             return "What's the magic word?"
         tag_name = kwargs.get('tag', '')
         if not tag_name:
