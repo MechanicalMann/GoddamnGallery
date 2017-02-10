@@ -58,6 +58,9 @@
             infosize = "{} &times; {}, ".format(i.size_x, i.size_y)
         %>
         <li class="image">
+            % if logged_in:
+            <span class="edit-button text-primary" data-image-path="${i.path.replace(baseurl, '')}"><i class="fa fa-pencil"></i></span>
+            % endif
             <figure>
                 <a href="${i.path}">
                     <img src="${thumb}" class="img-thumbnail center-block" />
@@ -112,6 +115,103 @@
         % endif
     </p>
     % endif
+
+    %if logged_in:
+    <div class="modal fade" tabindex="-1" role="dialog" id="editor">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Editing <span class="image-name"></span></h4>
+                </div>
+                <div class="modal-body">
+                    <h4>Tags</h4>
+                    <ul class="tag-list list-group">
+                        <li class="list-group-item" id="addTag">
+                            <div class="input-group">
+                                <input type="text" class="new-tag form-control" placeholder="Add tag">
+                                <span class="input-group-btn">
+                                    <button class="add-tag-button btn"><i class="fa fa-plus" aria-hidden="true"></i></button>
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    $(function(){
+        var baseUrl = "${baseurl}",
+            allTags = [],
+            editor = $("#editor"),
+            addTag = $("#addTag");
+
+        function insertTag(tag) {
+            addTag.before($("<li></li>").addClass("tag-item list-group-item").text(tag));
+        }
+
+        $("#addTag input").easyAutocomplete({ url: baseUrl + "api/tags", list: { match: { enabled: true } } });
+        $(".easy-autocomplete").css({ "width": "100%", "height": "34px" });
+        $("ul.image-list").on("click", ".edit-button", function () {
+            var img = $(this).data("image-path"),
+                detailsUrl = baseUrl + "api/" + img,
+                bits = img.split("/"),
+                imageName = bits[bits.length - 1];
+            editor.find(".image-name").text(imageName);
+            $.get(detailsUrl).done(function (data) {
+                for (var t in data.tags) {
+                    insertTag(data.tags[t]);
+                }
+                editor.find(".new-tag").removeAttr("disabled").data("api-url", detailsUrl);
+                editor.modal();
+            })
+        });
+        editor.on("hidden.bs.modal", function () {
+            if (editor.data("edited")) {
+                window.location.reload();
+                return;
+            }
+            editor.find(".new-tag").val("");
+            editor.find(".image-name").text("");
+            editor.find(".new-tag").attr("disabled", "disabled");
+            editor.find(".tag-item").remove();
+        });
+        editor.on("click", ".add-tag-button", function (ev) {
+            // if (ev.which != 13)
+            //     return;
+            var input = $("#addTag input"),
+                val = (input.val() || "").trim();
+            if (!val || val === "")
+                return;
+            var t = val.replace(/\s+/g, "-"),
+                tagUrl = input.data("api-url") + "/tags";
+            console.log(t);
+            input.attr("disabled", "disabled");
+            $.ajax({
+                url: tagUrl,
+                method: "PUT",
+                data: { "tag": t }
+            }).done(function (data) {
+                addTag.removeClass("has-error");
+                if (data != "Image was already tagged") {
+                    editor.data("edited", true);
+                    insertTag(t);
+                }
+                input.val("");
+                input.removeAttr("disabled");
+            }).fail(function () {
+                addTag.addClass("has-error");
+                input.removeAttr("disabled");
+            });
+        })
+    })
+    </script>
+    %endif
 % elif not message == None and not message == "":
     <p class="lead text-center">
         ${message}

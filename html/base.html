@@ -9,6 +9,8 @@
         
         <!-- Bootstrap -->
         <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/easy-autocomplete/1.3.5/easy-autocomplete.min.css" />
         
         <style>
             ul.image-list {
@@ -23,6 +25,7 @@
                 width: 200px;
                 height: 320px;
                 overflow: hidden;
+                position: relative;
             }
             li.image figure {
                 width: 200px;
@@ -83,7 +86,31 @@
                 border-top-left-radius: 0;
                 border-top-right-radius: 0;
             }
+            .edit-button {
+                position: absolute;
+                top: 0;
+                right: 0;
+                background: #fff;
+                padding: 4px;
+                width: 16px;
+                height: 16px;
+                box-sizing: content-box;
+                display: none;
+            }
+            .edit-button:hover {
+                cursor: pointer;
+            }
+            .image:hover .edit-button {
+                display: block;
+            }
+            .edit-button:hover i {
+                opacity: 0.75;
+            }
+            .easy-autocomplete-container {
+                top: 34px;
+            }
         </style>
+        <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
     </head>
     <body>
         <nav class="navbar navbar-default">
@@ -108,7 +135,7 @@
             ${self.body()}
         </div>
         
-        <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
         <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/easy-autocomplete/1.3.5/jquery.easy-autocomplete.min.js"></script>
     </body>
 </html>
