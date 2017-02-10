@@ -59,7 +59,7 @@
         %>
         <li class="image">
             % if logged_in:
-            <span class="edit-button text-primary" data-image-path="${i.path.replace(baseurl, '')}"><i class="fa fa-pencil"></i></span>
+            <span class="edit-button text-primary" data-image-path="${i.path.replace(baseurl, '')}"><span class="glyphicon glyphicon-pencil"></span></span>
             % endif
             <figure>
                 <a href="${i.path}">
