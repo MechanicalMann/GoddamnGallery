@@ -151,8 +151,12 @@
             editor = $("#editor"),
             addTag = $("#addTag");
 
-        function insertTag(tag) {
-            addTag.before($("<li></li>").addClass("tag-item list-group-item").text(tag));
+        function insertTag(tag, apiUrl) {
+            var delbutton = $("<a></a>")
+                .addClass("delete-tag-button btn btn-xs btn-danger pull-right")
+                .data("tag-url", apiUrl + "/tags/" + tag)
+                .html('<span class="glyphicon glyphicon-trash"></span>');
+            addTag.before($("<li></li>").addClass("tag-item list-group-item").text(tag).append(delbutton));
         }
 
         $("#addTag input").easyAutocomplete({ url: baseUrl + "api/tags", list: { match: { enabled: true } } });
@@ -165,7 +169,7 @@
             editor.find(".image-name").text(imageName);
             $.get(detailsUrl).done(function (data) {
                 for (var t in data.tags) {
-                    insertTag(data.tags[t]);
+                    insertTag(data.tags[t], detailsUrl);
                 }
                 editor.find(".new-tag").removeAttr("disabled").data("api-url", detailsUrl);
                 editor.modal();
@@ -189,7 +193,8 @@
             if (!val || val === "")
                 return;
             var t = val.replace(/\s+/g, "-"),
-                tagUrl = input.data("api-url") + "/tags";
+                apiUrl = input.data("api-url"),
+                tagUrl = apiUrl + "/tags";
             console.log(t);
             input.attr("disabled", "disabled");
             $.ajax({
@@ -200,13 +205,24 @@
                 addTag.removeClass("has-error");
                 if (data != "Image was already tagged") {
                     editor.data("edited", true);
-                    insertTag(t);
+                    insertTag(t, apiUrl);
                 }
                 input.val("");
                 input.removeAttr("disabled");
             }).fail(function () {
                 addTag.addClass("has-error");
                 input.removeAttr("disabled");
+            });
+        });
+        editor.on("click", ".delete-tag-button", function (ev) {
+            var url = $(this).data("tag-url");
+            console.log(url);
+            $.ajax({
+                url: url,
+                method: "DELETE"
+            }).success(function () {
+                $(ev.target).parent(".tag-item").remove();
+                editor.data("edited", true);
             });
         })
     })

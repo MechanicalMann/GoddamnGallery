@@ -329,6 +329,10 @@ class TagController(object):
     def _cp_dispatch(self, vpath):
         if cherrypy.request.method == 'PUT' or cherrypy.request.method == 'POST':
             return self.add_tag
+        if len(vpath) > 0:
+            cherrypy.request.params['tag'] = vpath.pop(0)
+        if cherrypy.request.method == 'DELETE':
+            return self.remove_tag
         return self
 
     @cherrypy.expose
@@ -369,6 +373,34 @@ class TagController(object):
                     return "Image has been successfully tagged"
                 else:
                     return "Image was already tagged"
+    
+    @cherrypy.expose
+    def remove_tag(self, image="", tag=""):
+        if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
+            raise cherrypy.HTTPError(401, "What's the magic word?")
+        if not tag:
+            raise cherrypy.HTTPError(400, "You need to specify a tag name.")
+        if not image:
+            raise cherrypy.HTTPError(400, "You need to specify an image to tag.")
+        image_folder = cherrypy.request.app.config['images']['path']
+        full_path = os.path.join(current_dir, image_folder, image)
+
+        dbpath = cherrypy.request.app.config['database']['path']
+        with GoddamnDatabase(dbpath) as db:
+            with db.transaction():
+                images = list(Image.select().where(Image.path == full_path))
+                if len(images) == 0:
+                    raise cherrypy.HTTPError(404, "Image \"{}\" does not exist".format(image))
+                i = images[0]
+                tags = list(Tag.select().where(Tag.slug == tag))
+                if len(tags) == 0:
+                    raise cherrypy.HTTPError(404, "Tag \"{}\" does not exist".format(tag))
+                t = tags[0]
+                n = TagImage.delete().where(TagImage.tag == t, TagImage.image == i).execute()
+                if n > 0:
+                    return "Image has been successfully untagged"
+                else:
+                    return "Image was already untagged"
 
 class ImageController(object):
     def __init__(self):
