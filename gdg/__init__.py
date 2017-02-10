@@ -327,7 +327,6 @@ class TagController(object):
         pass
 
     def _cp_dispatch(self, vpath):
-        cherrypy.log("Dispatching from TagController")
         if cherrypy.request.method == 'PUT' or cherrypy.request.method == 'POST':
             return self.add_tag
         return self
@@ -376,7 +375,6 @@ class ImageController(object):
         self.tags = TagController()
     
     def _cp_dispatch(self, vpath):
-        cherrypy.log("Dispatching from ImageController")
         path = ""
         while len(vpath) > 0:
             segment = vpath.pop(0)
@@ -428,7 +426,6 @@ class ApiController(object):
         self.images = ImageController()
 
     def _cp_dispatch(self, vpath):
-        cherrypy.log("Dispatching from ApiController: {}".format(str(vpath)))
         if len(vpath) == 0:
             return self
         route = vpath[0].lower()
