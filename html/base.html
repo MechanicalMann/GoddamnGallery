@@ -120,11 +120,11 @@
                 % if logged_in:
                 <p class="navbar-text">Signed in as ${user['name']}</p>
                 <p class="navbar-text navbar-right">
-                    <a class="navbar-link" href="${urljoin(baseurl, '/account/logout')}">Sign out</a>
+                    <a class="navbar-link" href="${urljoin(baseurl, 'account/logout')}">Sign out</a>
                 </p>
                 % else:
                 <p class="navbar-text navbar-right">
-                    <a class="navbar-link" href="${urljoin(baseurl, '/account/login')}">Sign in</a>
+                    <a class="navbar-link" href="${urljoin(baseurl, 'account/login')}">Sign in</a>
                 </p>
                 % endif
             </div>
