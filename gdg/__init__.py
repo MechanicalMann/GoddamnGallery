@@ -340,6 +340,7 @@ class TagController(object):
             return [t.slug for t in Tag.select().join(TagImage).join(Image).where(Image.path == full_path)]
     
     @cherrypy.expose
+    @cherrypy.tools.allow(methods=['POST', 'PUT', 'PATCH'])
     def add_tag(self, image="", **kwargs):
         if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
             raise cherrypy.HTTPError(401, "What's the magic word?")
@@ -366,6 +367,7 @@ class TagController(object):
                     return "Image was already tagged"
     
     @cherrypy.expose
+    @cherrypy.tools.allow(methods=['DELETE'])
     def remove_tag(self, image="", tag=""):
         if 'user' not in cherrypy.session and not verify_key(kwargs.get('key', '')):
             raise cherrypy.HTTPError(401, "What's the magic word?")
