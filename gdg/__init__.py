@@ -326,18 +326,9 @@ class TagController(object):
     def __init__(self):
         pass
 
-    def _cp_dispatch(self, vpath):
-        if cherrypy.request.method == 'PUT' or cherrypy.request.method == 'POST':
-            return self.add_tag
-        if len(vpath) > 0:
-            cherrypy.request.params['tag'] = vpath.pop(0)
-        if cherrypy.request.method == 'DELETE':
-            return self.remove_tag
-        return self
-
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def default(self, image=""):
+    def list(self, image=""):
         cherrypy.log(cherrypy.request.method)
         dbpath = cherrypy.request.app.config['database']['path']
         if not image:
@@ -406,39 +397,18 @@ class ImageController(object):
     def __init__(self):
         self.tags = TagController()
     
-    def _cp_dispatch(self, vpath):
-        path = ""
-        while len(vpath) > 0:
-            segment = vpath.pop(0)
-            path = "/".join([path, segment])
-            if extension.search(segment):
-                break
-        if path.startswith('/'):
-            path = path[1:]
-        if extension.search(path):
-            cherrypy.request.params['image'] = path
-        
-            if len(vpath) > 0:
-                sub = vpath.pop(0)
-                if sub.lower() == 'tags':
-                    return self.tags._cp_dispatch(vpath) # The default dispatcher doesn't fall through from here for some reason
-            return self.details
-
-        cherrypy.request.params['gallery'] = path
-        return self
-    
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def details(self, image):
         image_folder = cherrypy.request.app.config['images']['path']
         full_path = os.path.join(current_dir, image_folder, image)
         details = get_image_details(full_path).__dict__ # required for JSON serialization for some reason
-        details['tags'] = self.tags.default(image)
+        details['tags'] = self.tags.list(image)
         return details
     
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def default(self, gallery=""):
+    def list(self, gallery=""):
         model = get_viewmodel()
         dbpath = cherrypy.request.app.config['database']['path']
         baseurl = get_base_url()
@@ -458,15 +428,7 @@ class ApiController(object):
         self.images = ImageController()
 
     def _cp_dispatch(self, vpath):
-        if len(vpath) == 0:
-            return self
-        route = vpath[0].lower()
-        if route == 'images' or route == 'list':
-            vpath.pop(0) # /images/
-            return self.images
-        if route == 'tags':
-            vpath.pop(0) # /tags/
-            return self.images.tags
+        cherrypy.log("Dispatching")
         return self
 
     @cherrypy.expose
@@ -531,18 +493,18 @@ def configure_routes(script_name=''):
     global application
     cherrypy.config.update('gdg.conf')
 
-    api_config = { '/images': { 'tools.staticdir.on': False } } # disable the static image directory
-    api = cherrypy.tree.mount(ApiController(), '/api', config='gdg.conf')
-    api.merge(api_config)
-
     dispatch = cherrypy.dispatch.RoutesDispatcher()
-    # dispatch.connect("api", "/api/list/{gallery:.*}", ApiController(), action='list')
-    # dispatch.connect("api", "/api/{action}/{id}", ApiController())
-    # dispatch.connect("api", "/api/{action}", ApiController())
-    dispatch.connect("account", "/account/login", AccountController(), action='handle_login', conditions=dict(method=["POST"]))
+    dispatch.connect("delete_tag", "/api/images/{image:.*?}/tags/{tag}", TagController(), action='remove_tag', conditions={ "method": ["DELETE"] })
+    dispatch.connect("add_tag", "/api/images/{image:.*?}/tags/{tag}", TagController(), action='add_tag', conditions={ "method": ["POST", "PUT", "PATCH"] })
+    dispatch.connect("tags", "/api/images/{image:.*?}/tags", TagController(), action='list')
+    dispatch.connect("image", "/api/images/{image:.*?}", ImageController(), action='details')
+    dispatch.connect("api", "/api/images", ImageController(), action='list')
+    dispatch.connect("api", "/api/list", ImageController(), action='list')
+    dispatch.connect("slack", "/api/slack", ApiController(), action='slack')
+    dispatch.connect("account_login", "/account/login", AccountController(), action='handle_login', conditions={ "method": ["POST"] })
     dispatch.connect("account", "/account/{action}", AccountController(), action='index')
-    dispatch.connect("primary", "{gallery:.*?}/page/:page", GalleryController(), action='index')
-    dispatch.connect("primary", "{gallery:.*?}", GalleryController(), action='index')
+    dispatch.connect("gallery_page", "/{gallery:.*?}/page/:page", GalleryController(), action='index')
+    dispatch.connect("gallery", "/{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
 
     application = cherrypy.tree.mount(root=None, script_name=script_name, config='gdg.conf')
