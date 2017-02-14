@@ -132,7 +132,7 @@ def get_images(dbpath, model=None, page=1, page_size=20, gallery="", tag=""):
 def get_image_details(p):
     if p == None or p == "":
         return None
-    p = os.path.normpath(p.replace(get_base_url(), current_dir))
+    p = os.path.normpath(p.replace(get_base_url(), current_dir + '/'))
     dbpath = cherrypy.request.app.config['database']['path']
     with GoddamnDatabase(dbpath):
         return get_model(Image.get(Image.path == p))
