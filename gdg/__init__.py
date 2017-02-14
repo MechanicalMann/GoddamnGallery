@@ -497,9 +497,11 @@ def configure_routes(script_name=''):
 
     dispatch = cherrypy.dispatch.RoutesDispatcher()
     dispatch.connect("delete_tag", "/api/images/{image:.*?}/tags/{tag}", TagController(), action='remove_tag', conditions={ "method": ["DELETE"] })
-    dispatch.connect("add_tag", "/api/images/{image:.*?}/tags/{tag}", TagController(), action='add_tag', conditions={ "method": ["POST", "PUT", "PATCH"] })
-    dispatch.connect("tags", "/api/images/{image:.*?}/tags", TagController(), action='list')
+    dispatch.connect("add_tag", "/api/images/{image:.*?}/tags/{tag}", TagController(), action='add_tag', conditions={ "method": ["PUT", "PATCH"] })
+    dispatch.connect("add_tag_post", "/api/images/{image:.*?}/tags", TagController(), action='add_tag', conditions={ "method": ["POST"] })
+    dispatch.connect("image_tags", "/api/images/{image:.*?}/tags", TagController(), action='list')
     dispatch.connect("image", "/api/images/{image:.*?}", ImageController(), action='details')
+    dispatch.connect("list_tags", "/api/tags", TagController(), action='list')
     dispatch.connect("api", "/api/images", ImageController(), action='list')
     dispatch.connect("api", "/api/list", ImageController(), action='list')
     dispatch.connect("slack", "/api/slack", ApiController(), action='slack')
