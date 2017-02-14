@@ -508,6 +508,7 @@ def configure_routes(script_name=''):
     dispatch.connect("account_login", "/account/login", AccountController(), action='handle_login', conditions={ "method": ["POST"] })
     dispatch.connect("account", "/account/{action}", AccountController(), action='index')
     dispatch.connect("gallery_page", "/{gallery:.*?}/page/:page", GalleryController(), action='index')
+    dispatch.connect("main_page", "/page/:page", GalleryController(), action='index')
     dispatch.connect("gallery", "/{gallery:.*?}", GalleryController(), action='index')
     route_config = { '/': { 'request.dispatch': dispatch } }
 
