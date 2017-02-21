@@ -504,6 +504,7 @@ def configure_routes(script_name=''):
     dispatch.connect("list_tags", "/api/tags", TagController(), action='list')
     dispatch.connect("api", "/api/images", ImageController(), action='list')
     dispatch.connect("api", "/api/list", ImageController(), action='list')
+    dispatch.connect("search", "/api/search", ApiController(), action='search')
     dispatch.connect("slack", "/api/slack", ApiController(), action='slack')
     dispatch.connect("account_login", "/account/login", AccountController(), action='handle_login', conditions={ "method": ["POST"] })
     dispatch.connect("account", "/account/{action}", AccountController(), action='index')
