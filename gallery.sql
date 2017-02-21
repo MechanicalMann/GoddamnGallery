@@ -38,7 +38,7 @@ CREATE TABLE users (
                         UNIQUE,
     email VARCHAR( 512 ) NOT NULL,
     hash  VARCHAR( 128 ) NOT NULL
-)
+);
 
 -- View: images_by_tag
 CREATE VIEW images_by_tag AS
