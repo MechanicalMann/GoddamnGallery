@@ -486,6 +486,11 @@ class ApiController(object):
             con = httplib.HTTPSConnection(p.netloc)
             con.request("POST", p.path, json.dumps(message))
             
+            # Slack doesn't like when you return from your slash command
+            # before you receive the response from the webhook.  Weird.
+            response = con.getresponse()
+            response.read()
+
             return ""
         except:
             cherrypy.log("An error occurred while attempting to send an image to Slack.", traceback=True)
